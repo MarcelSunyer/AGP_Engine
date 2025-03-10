@@ -1,14 +1,14 @@
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
-#ifdef Render_Quad
+#ifdef Render_Quadt
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec2 aTexCoord;
 
-out vec2 vTexCoord;
+out vec2 uTexCoord;
 
 void main()
 {
@@ -20,15 +20,15 @@ void main()
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////
 
-in vec2 uvTextCoord;
+in vec2 uTexCoord;
 
-uniform sample2D uTexture;
+uniform sampler2D uTexture;
 
 layout(location = 0) out vec4 oColor;
 
 void main()
 {
-	oColor = texture(uTexture, vTexCoord);
+	oColor = texture(uTexture, uTexCoord);
 }
 
 #endif
