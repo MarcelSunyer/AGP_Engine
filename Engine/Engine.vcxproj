@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AssimpModelLoading.cpp" />
+    <ClCompile Include="BufferManagement.cpp" />
     <ClCompile Include="Code\engine.cpp" />
     <ClCompile Include="Code\platform.cpp" />
     <ClCompile Include="ThirdParty\glad\include\glad\glad.c" />
@@ -32,6 +34,8 @@
     <ClCompile Include="ThirdParty\stb\stb.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AssimpModelLoading.h" />
+    <ClInclude Include="BufferManagement.h" />
     <ClInclude Include="Code\engine.h" />
     <ClInclude Include="Code\platform.h" />
     <ClInclude Include="ThirdParty\glad\include\glad\glad.h" />

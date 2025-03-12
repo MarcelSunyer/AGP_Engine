@@ -51,6 +51,12 @@
     <ClCompile Include="ThirdParty\stb\stb.cpp">
       <Filter>Stb</Filter>
     </ClCompile>
+    <ClCompile Include="BufferManagement.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="AssimpModelLoading.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ThirdParty\imgui-docking\imconfig.h">
@@ -91,6 +97,12 @@
     </ClInclude>
     <ClInclude Include="ThirdParty\stb\stb_image.h">
       <Filter>Stb</Filter>
+    </ClInclude>
+    <ClInclude Include="BufferManagement.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="AssimpModelLoading.h">
+      <Filter>Engine</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
