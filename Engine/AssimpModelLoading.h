@@ -6,8 +6,11 @@
 #include <assimp/postprocess.h>
 #include <vector>
 #include <string>
+#include <cstdio>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
+#include "Code/platform.h"
+
 // Type definitions
 typedef uint32_t u32;
 typedef uint8_t u8;
