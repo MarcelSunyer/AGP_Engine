@@ -101,8 +101,8 @@ void ProcessAssimpMaterial(App* app, aiMaterial* material, Material& myMaterial,
     material->Get(AI_MATKEY_SHININESS, shininess);
 
     myMaterial.name = name.C_Str();
-    myMaterial.albedo = glm::vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
-    myMaterial.emissive = glm::vec3(emissiveColor.r, emissiveColor.g, emissiveColor.b);
+    myMaterial.albedo = vec3(diffuseColor.r, diffuseColor.g, diffuseColor.b);
+    myMaterial.emissive = vec3(emissiveColor.r, emissiveColor.g, emissiveColor.b);
     myMaterial.smoothness = shininess / 256.0f;
 
     aiString aiFilename;
@@ -179,7 +179,7 @@ u32 LoadModel(App* app, const char* filename)
         {
             char errorMessage[256];
             sprintf_s(errorMessage, "Error loading mesh %s: %s", filename, aiGetErrorString());
-            //TODO: Preguntar al suso
+            
             //ELOG("Error loading mesh");
             return UINT32_MAX;
         }

@@ -98,6 +98,23 @@ u32 LoadProgram(App* app, const char* filepath, const char* programName)
     program.filepath = filepath;
     program.programName = programName;
     program.lastWriteTimestamp = GetFileLastWriteTimestamp(filepath);
+
+    if (program.handle != 0)
+    {
+        GLint AttribuitCount = 0UL;
+        glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &AttribuitCount);
+            for (size_t i = 0; i < AttribuitCount; ++i)
+            {
+                GLchar Name[248];
+                GLsizei realNameSize = 0UL;
+                GLsizei attribSize = 0UL;
+                GLenum attribType;
+                glGetActiveAttrib(program.handle, i, ARRAY_COUNT(Name), &realNameSize, &attribSize, &attribType, Name);
+                GLuint attribLocation = glGetAttribLocation(program.handle, Name);
+                program.vertexInputLayout.attributes.push_back({static_cast<u8>(attribLocation), static_cast<u8>(attribSize)});
+            }
+    }
+
     app->programs.push_back(program);
 
     return app->programs.size() - 1;
@@ -206,6 +223,10 @@ void Init(App* app)
 
     //Program Init
     app->texturedGeometryProgramIdx = LoadProgram(app, "Render_Quad.glsl", "Render_Quadt");
+
+    Program& quadprogram = app->programs[app->texturedGeometryProgramIdx];
+
+
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
 

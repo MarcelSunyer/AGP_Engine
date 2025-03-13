@@ -1,6 +1,8 @@
 #ifndef ASSIMP_MODEL_LOADER_H
 #define ASSIMP_MODEL_LOADER_H
 
+#include "Code/platform.h"
+#include "Code/engine.h"
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -9,11 +11,7 @@
 #include <cstdio>
 #include <glm/glm.hpp>
 #include <glad/glad.h>
-#include "Code/platform.h"
 
-// Type definitions
-typedef uint32_t u32;
-typedef uint8_t u8;
 
 // Forward declarations
 struct App;
@@ -21,7 +19,9 @@ struct Mesh;
 struct Material;
 struct Model;
 struct VertexBufferLayout;
+struct VertexShaderLayout;
 struct VertexBufferAttribute;
+struct VertexShaderAttribute;
 struct Submesh;
 struct String;
 
@@ -38,14 +38,19 @@ u32 LoadTexture2D(App* app, const char* filepath);
 
 // Structures
 struct VertexBufferAttribute {
-    u32 location;
-    u32 componentCount;
-    u32 offset;
+    u8 location;
+    u8 componentCount;
+    u8 offset;
 };
 
 struct VertexBufferLayout {
     std::vector<VertexBufferAttribute> attributes;
-    u32 stride;
+    u8 stride;
+};
+
+struct Model {
+    u32 meshIdx;
+    std::vector<u32> materialIdx;
 };
 
 struct Submesh {
@@ -54,6 +59,8 @@ struct Submesh {
     std::vector<u32> indices;
     u32 vertexOffset;
     u32 indexOffset;
+
+    //std::vector<Vao> vaos;
 };
 
 struct Mesh {
@@ -64,9 +71,9 @@ struct Mesh {
 
 struct Material {
     std::string name;
-    glm::vec3 albedo;
-    glm::vec3 emissive;
-    float smoothness;
+    vec3 albedo;
+    vec3 emissive;
+    f32 smoothness;
     u32 albedoTextureIdx;
     u32 emissiveTextureIdx;
     u32 specularTextureIdx;
@@ -74,15 +81,5 @@ struct Material {
     u32 bumpTextureIdx;
 };
 
-struct Model {
-    u32 meshIdx;
-    std::vector<u32> materialIdx;
-};
-
-struct App {
-    std::vector<Mesh> meshes;
-    std::vector<Material> materials;
-    std::vector<Model> models;
-};
 
 #endif // ASSIMP_MODEL_LOADER_H

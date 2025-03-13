@@ -16,6 +16,9 @@
     <Filter Include="Stb">
       <UniqueIdentifier>{0ac2ff0f-5f18-480a-8bd6-6aa7428166bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{75e7876f-d1d1-4c58-a3da-9a5879deaef2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ThirdParty\imgui-docking\imgui.cpp">
@@ -51,11 +54,11 @@
     <ClCompile Include="ThirdParty\stb\stb.cpp">
       <Filter>Stb</Filter>
     </ClCompile>
-    <ClCompile Include="BufferManagement.cpp">
-      <Filter>Engine</Filter>
-    </ClCompile>
     <ClCompile Include="AssimpModelLoading.cpp">
-      <Filter>Engine</Filter>
+      <Filter>Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="BufferManagement.cpp">
+      <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -99,14 +102,17 @@
       <Filter>Stb</Filter>
     </ClInclude>
     <ClInclude Include="BufferManagement.h">
-      <Filter>Engine</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="AssimpModelLoading.h">
-      <Filter>Engine</Filter>
+      <Filter>Helpers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="WorkingDir\Render_Quad.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="RENDER_GEOMETRY.gsls">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
