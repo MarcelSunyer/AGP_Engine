@@ -6,6 +6,9 @@
 //
 
 #include "engine.h"
+
+#include "../AssimpModelLoading.h"
+
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
@@ -197,6 +200,8 @@ u32 LoadTexture2D(App* app, const char* filepath)
 
 void Init(App* app)
 {
+
+    glEnable(GL_DEPTH_TEST);
     //VBO Init
     glGenBuffers(1, &app->embeddedVertices);
     glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
@@ -237,8 +242,12 @@ void Init(App* app)
     app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
-    app->mode = Mode_TexturedQuad;
+    //Geometry rendering loads
+    app->patrickIdx = LoadModel(app, "./Patrick/Patrick.obj");
+    app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
+    app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
+    app->mode = Mode_Forward_Geometry;
 }
 
 void Gui(App* app)
@@ -295,9 +304,40 @@ void Render(App* app)
 
             glBindVertexArray(0);
 
-                glUseProgram(0);
+            glUseProgram(0);
             }
             break;
+        case Mode_Forward_Geometry:
+        {
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // Set the viewport
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+            Program& geometryProgram = app->programs[app->texturedGeometryProgramIdx];
+            glUseProgram(geometryProgram.handle);
+
+            Model& model = app->models[app->patrickIdx];
+            Mesh& mesh = app->meshes[model.meshIdx];
+
+            for (size_t i = 0; i < mesh.submeshes.size(); i++)
+            {
+                GLuint vao = FindVao(mesh, i , geometryProgram);
+                glBindVertexArray(vao);
+
+                u32 submeshMaterialIdx = model.materialIdx[i];
+                Material& submeshMaterial = app->materials[submeshMaterialIdx];
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                glUniform1i(app->patrickTextureUniform, 0);
+                Submesh& submesh = mesh.submeshes[i];
+                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+            }
+        }
+        break;
 
         default:;
     }
@@ -336,5 +376,57 @@ void CleanUp(App* app)
         glDeleteBuffers(1, &app->embeddedElements);
         app->embeddedElements = 0;
     }
+}
+
+GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
+{
+    Submesh& submesh = mesh.submeshes[submeshIndex];
+    for (u32 i = 0; i < (u32)submesh.vaos.size(); ++i)
+    {
+        if (submesh.vaos[i].progranHandle == program.handle)
+        {
+            return submesh.vaos[i].handle;
+        }
+    }
+
+    GLuint vaoHandle = 0;
+
+    //Create new vao
+    {
+        glGenVertexArrays(1, &vaoHandle);
+        glBindVertexArray(vaoHandle);
+
+        glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
+
+        for (auto& shaderLayout : program.vertexInputLayout.attributes)
+        {
+            bool attributeWasLinked;
+
+            for (auto& meshLayout : submesh.vertexBufferLayout.attributes)
+            {
+                if (shaderLayout.location == meshLayout.location);
+                {
+                    const u32 index = meshLayout.location;
+                    const u32 ncomp = meshLayout.componentCount;
+                    const u32 offset = meshLayout.offset + submesh.vertexOffset;
+                    const u32 stride = submesh.vertexBufferLayout.stride;
+
+                    glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)submesh.indexOffset);
+                    glEnableVertexAttribArray(index);
+
+                    attributeWasLinked = true;
+                    break;
+                }
+            }
+            assert(attributeWasLinked);
+        }
+        glBindVertexArray(0);
+    }
+
+    Vao vao = { vaoHandle, program.handle };
+    submesh.vaos.push_back(vao);
+
+    return vaoHandle;
 }
 

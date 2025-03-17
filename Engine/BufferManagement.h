@@ -1,22 +1,16 @@
 #ifndef BUFFER_MANAGEMENT_H
 #define BUFFER_MANAGEMENT_H
 
+#include "./Code/Structs.hpp"
 #include <stdint.h>  // For uint32_t (u32)
 #include <string.h>  // For memcpy
 #include <glad/glad.h>
+
 
 // Type definitions
 typedef uint32_t u32;
 typedef uint8_t u8;
 
-// Buffer structure
-struct Buffer {
-    u32 size;
-    GLenum type;
-    GLuint handle;
-    u32 head;
-    u8* data;
-};
 
 // Utility functions
 bool IsPowerOf2(u32 value);
