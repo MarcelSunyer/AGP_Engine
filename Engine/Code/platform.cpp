@@ -207,29 +207,7 @@ int main()
 
     //Informacion de OpenGl
      
-    std::stringstream VendorInfo;
 
-    VendorInfo << "OpenGl version: " << std::endl;
-    VendorInfo << glGetString(GL_VERSION) << std::endl << std::endl;
-
-    VendorInfo << "OpenGl render: " << std::endl;
-    VendorInfo << glGetString(GL_RENDERER) << std::endl << std::endl;
-
-    VendorInfo << "OpenGl vendor: " << std::endl;
-    VendorInfo << glGetString(GL_VENDOR) << std::endl << std::endl;
-
-    VendorInfo << "OpenGl GLSL version: " << std::endl;
-    VendorInfo << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl << std::endl;
-
-    GLint num_extensions;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
-
-    for (int i = 0; i < num_extensions; ++i)
-    {
-        const unsigned char* str = glGetStringi(GL_EXTENSIONS, GLuint((i)));
-
-        std::cout << std::endl;
-    }
 
 
     Init(&app);

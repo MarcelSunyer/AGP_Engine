@@ -248,12 +248,31 @@ void Init(App* app)
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
     app->mode = Mode_Forward_Geometry;
+
+
 }
 
 void Gui(App* app)
 {
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
+
+    ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
+    ImGui::Text("OpenGL Renderer: %s", glGetString(GL_RENDERER));
+    ImGui::Text("OpenGL Vendor: %s", glGetString(GL_VENDOR));
+    ImGui::Text("OpenGL GLSL Version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    // Display OpenGL extensions
+    ImGui::Separator();
+    ImGui::Text("OpenGL Extensions:");
+    GLint num_extensions;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+    for (int i = 0; i < num_extensions; ++i) {
+        const unsigned char* extension = glGetStringi(GL_EXTENSIONS, GLuint(i));
+        ImGui::Text("%s", extension);
+    }
+
+    // End the ImGui window
     ImGui::End();
 }
 
