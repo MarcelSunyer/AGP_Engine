@@ -399,7 +399,36 @@ GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
         glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
 
-        for (auto& shaderLayout : program.vertexInputLayout.attributes)
+        for (u32 i = 0; i < program.vertexInputLayout.attributes.size(); ++i)
+        {
+            bool attributeWasLinked = false;
+
+            for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); ++j)
+            {
+                if (program.vertexInputLayout.attributes[i].location == submesh.vertexBufferLayout.attributes[j].location)
+                {
+
+                    const u32 index = submesh.vertexBufferLayout.attributes[j].location;
+                    const u32 ncomp = submesh.vertexBufferLayout.attributes[j].componentCount;
+                    const u32 offset = submesh.vertexBufferLayout.attributes[j].offset + submesh.vertexOffset;
+                    const u32 stride = submesh.vertexBufferLayout.stride;
+
+
+                    glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)submesh.indexOffset);
+                    glEnableVertexAttribArray(index);
+
+                    attributeWasLinked = true;
+                    break;
+
+
+
+                }
+            }
+            assert(attributeWasLinked);
+        }
+        glBindVertexArray(0);
+    }
+      /*  for (auto& shaderLayout : program.vertexInputLayout.attributes)
         {
             bool attributeWasLinked;
 
@@ -422,7 +451,7 @@ GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
             assert(attributeWasLinked);
         }
         glBindVertexArray(0);
-    }
+    }*/
 
     Vao vao = { vaoHandle, program.handle };
     submesh.vaos.push_back(vao);
