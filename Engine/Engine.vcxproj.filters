@@ -54,10 +54,10 @@
     <ClCompile Include="ThirdParty\stb\stb.cpp">
       <Filter>Stb</Filter>
     </ClCompile>
-    <ClCompile Include="AssimpModelLoading.cpp">
+    <ClCompile Include="Code\AssimpModelLoading.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
-    <ClCompile Include="BufferManagement.cpp">
+    <ClCompile Include="Code\BufferManagement.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>
@@ -101,13 +101,13 @@
     <ClInclude Include="ThirdParty\stb\stb_image.h">
       <Filter>Stb</Filter>
     </ClInclude>
-    <ClInclude Include="BufferManagement.h">
-      <Filter>Helpers</Filter>
-    </ClInclude>
-    <ClInclude Include="AssimpModelLoading.h">
-      <Filter>Helpers</Filter>
-    </ClInclude>
     <ClInclude Include="Code\Structs.hpp" />
+    <ClInclude Include="Code\AssimpModelLoading.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Code\BufferManagement.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="WorkingDir\Render_Quad.glsl">

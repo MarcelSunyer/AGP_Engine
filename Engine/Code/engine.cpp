@@ -7,7 +7,7 @@
 
 #include "engine.h"
 
-#include "../AssimpModelLoading.h"
+#include "AssimpModelLoading.h"
 
 #include <imgui.h>
 #include <stb_image.h>
