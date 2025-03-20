@@ -11,7 +11,11 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
-
+struct Camera
+{
+    glm::mat4 ViewMatrix;
+    glm::mat4 ProjectionMatrix;
+};
 
 // Buffer structure
 struct Buffer {
@@ -133,7 +137,6 @@ struct Material {
 
 struct App
 {
-
     //Todo: Posar variables en un constructor
     // Loop
     f32  deltaTime;
@@ -184,6 +187,11 @@ struct App
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
+
+    Camera woldCamera;
+    GLint maxUniformBufferSize;
+    GLint uniformBlockAlignment;
+    Buffer localParamsUBO;
 };
 
 

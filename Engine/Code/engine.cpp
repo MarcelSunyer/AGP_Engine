@@ -6,12 +6,24 @@
 //
 
 #include "engine.h"
-
-#include "AssimpModelLoading.h"
+#include "BufferManagement.h"
 
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+
+
+glm::mat4 TransformScale(const vec3& scaleFactors)
+{
+    glm::mat4 transform = glm::scale(scaleFactors);
+    return transform;
+}
+glm::mat4 TransformPositionScale(const vec3& pos, const vec3& scaleFactors)
+{
+    glm::mat4 transform = glm::translate(pos);
+    transform = glm::scale(transform, scaleFactors);
+    return transform;
+}
 
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
@@ -247,9 +259,16 @@ void Init(App* app)
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
+    app->localParamsUBO = CreateConstantBuffer(app->maxUniformBufferSize);
+
+    MapBuffer(app->localParamsUBO, GL_WRITE_ONLY);
+    PushMat4(app->localParamsUBO, app->woldCamera.ViewMatrix);
+    PushMat4(app->localParamsUBO, app->woldCamera.ProjectionMatrix);
+    UnmapBuffer(app->localParamsUBO);
+
     app->mode = Mode_Forward_Geometry;
-
-
 }
 
 void Gui(App* app)
@@ -328,6 +347,12 @@ void Render(App* app)
             break;
         case Mode_Forward_Geometry:
         {
+            float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+            float near = 0.001f;
+            float far = 1000.0f;
+            app->woldCamera.ProjectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, near, far);
+            app->woldCamera.ViewMatrix = glm::lookAt(vec3(-5, 3, 0), vec3(0, 0, 0), vec3(0, 1, 0));
+
             glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -336,6 +361,8 @@ void Render(App* app)
 
             Program& geometryProgram = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(geometryProgram.handle);
+            
+            glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->localParamsUBO.handle, 0, app->localParamsUBO.size);
 
             Model& model = app->models[app->patrickIdx];
             Mesh& mesh = app->meshes[model.meshIdx];
