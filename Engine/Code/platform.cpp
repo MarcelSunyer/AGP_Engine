@@ -206,10 +206,7 @@ int main()
     GlobalFrameArenaMemory = (u8*)malloc(GLOBAL_FRAME_ARENA_SIZE);
 
     //Informacion de OpenGl
-     
-
-
-
+    
     Init(&app);
 
     while (app.isRunning)
@@ -274,6 +271,7 @@ int main()
     }
 
     CleanUp(&app);
+
     free(GlobalFrameArenaMemory);
 
     ImGui_ImplOpenGL3_Shutdown();

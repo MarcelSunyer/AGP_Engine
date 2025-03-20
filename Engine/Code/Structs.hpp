@@ -11,11 +11,7 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
-struct Camera
-{
-    glm::mat4 ViewMatrix;
-    glm::mat4 ProjectionMatrix;
-};
+
 
 // Buffer structure
 struct Buffer {
@@ -51,10 +47,10 @@ struct VertexShaderLayout {
 
 struct Program
 {
-    GLuint             handle;
-    std::string        filepath;
-    std::string        programName;
-    u64                lastWriteTimestamp; // What is this for?
+    GLuint handle;
+    std::string filepath;
+    std::string programName;
+    u64 lastWriteTimestamp; // What is this for?
     VertexShaderLayout vertexInputLayout;
 };
 
@@ -105,7 +101,7 @@ struct Model {
 struct Vao
 {
     GLuint handle;
-    GLuint progranHandle;
+    GLuint programHandle;
 };
 
 struct Submesh {
@@ -137,6 +133,7 @@ struct Material {
 
 struct App
 {
+
     //Todo: Posar variables en un constructor
     // Loop
     f32  deltaTime;
@@ -179,7 +176,7 @@ struct App
 
     // Embedded geometry (in-editor simple meshes such as
     // a screen filling quad, a cube, a sphere...)
-    GLuint embeddedVertices;
+    Buffer embeddedVertices;
     GLuint embeddedElements;
 
     // Location of the texture uniform in the textured quad shader
@@ -187,11 +184,6 @@ struct App
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
-
-    Camera woldCamera;
-    GLint maxUniformBufferSize;
-    GLint uniformBlockAlignment;
-    Buffer localParamsUBO;
 };
 
 

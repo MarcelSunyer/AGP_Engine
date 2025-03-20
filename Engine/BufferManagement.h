@@ -1,7 +1,7 @@
 #ifndef BUFFER_MANAGEMENT_H
 #define BUFFER_MANAGEMENT_H
 
-#include "Structs.hpp"
+#include "./Code/Structs.hpp"
 #include <stdint.h>  // For uint32_t (u32)
 #include <string.h>  // For memcpy
 #include <glad/glad.h>
