@@ -52,7 +52,7 @@
     <ClInclude Include="ThirdParty\stb\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="WorkingDir\RENDER_GEOMETRY.gsls" />
+    <None Include="WorkingDir\RENDER_GEOMETRY.glsl" />
     <None Include="WorkingDir\Render_Quad.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

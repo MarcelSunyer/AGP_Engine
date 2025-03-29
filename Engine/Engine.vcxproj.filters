@@ -113,7 +113,7 @@
     <None Include="WorkingDir\Render_Quad.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="WorkingDir\RENDER_GEOMETRY.gsls">
+    <None Include="WorkingDir\RENDER_GEOMETRY.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

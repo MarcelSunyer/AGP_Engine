@@ -11,6 +11,12 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
+struct Camera
+{
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
+    vec3 position;
+};
 
 
 // Buffer structure
@@ -93,6 +99,16 @@ struct VertexBufferLayout {
     u8 stride;
 };
 
+
+struct Entity {
+
+    glm::mat4 worldMatrix;
+    u32 modelIndex;
+    u32 entityBufferOffset;
+    u32 entityBufferSize;
+};
+
+
 struct Model {
     u32 meshIdx;
     std::vector<u32> materialIdx;
@@ -130,6 +146,21 @@ struct Material {
     u32 normalsTextureIdx;
     u32 bumpTextureIdx;
 };
+
+enum class LightType {
+    Light_Directional,
+    Light_Point,
+
+};
+
+struct Light
+{
+    LightType type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
 
 struct App
 {
@@ -184,7 +215,21 @@ struct App
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
+
+    std::vector<std::string> glExtensions;
+
+    Camera worldCamera;
+    GLint maxUniformBufferSize;
+    GLint uniformBlockAlignment;
+
+    Buffer entityUBO;
+    Buffer globalUBO;
+    Buffer localParamsUBO;
+
+    std::vector<Entity> entities;
+    std::vector<Light> lights;
 };
+
 
 
 #endif // !STRUCTS
