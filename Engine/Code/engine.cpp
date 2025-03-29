@@ -264,6 +264,7 @@ void Init(App* app)
 
     //Geometry rendering loads
     app->patrickIdx = LoadModel(app, "Patrick/Patrick.obj");
+    u32 planeIdx = LoadModel(app, "./Plane.obj");
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
@@ -303,6 +304,7 @@ void Init(App* app)
 
     //Plane????
     //CreateEntity(plane)
+    CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
 
     for (size_t z = -4; z != 4; ++z)
     {
@@ -414,7 +416,7 @@ void Render(App* app)
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
 
-                    glUniform1i(app->patrickTextureUniform, 0);
+                    //glUniform1i(app->patrickTextureUniform, 0);
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
