@@ -265,6 +265,7 @@ void Init(App* app)
     //Geometry rendering loads
     app->patrickIdx = LoadModel(app, "Patrick/Patrick.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
+
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
@@ -274,29 +275,18 @@ void Init(App* app)
     app->worldCamera.projectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, near, far);
     app->worldCamera.viewMatrix = glm::lookAt(vec3(0,10, 35), vec3(0, 1, 0), vec3(0, 1, 0));
 
+
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
-
-    app->lights.push_back({ LightType::Light_Directional , vec3(1.0,.0,.0), vec3(1.0, 1.0, 1.0), vec3(0.0) });
-
-    MapBuffer(app->globalUBO, GL_WRITE_ONLY);
-    PushMat3(app->globalUBO, app->worldCamera.position);
-    PushUInt(app->globalUBO, app->lights.size());
-    for (size_t i = 0; i < app->lights.size(); ++i)
-    {
-        AlignHead(app->globalUBO, sizeof(vec4));
-        Light& light = app->lights[i];
-        PushUInt(app->globalUBO, static_cast<int>(light.type));
-        PushVec3(app->globalUBO, light.color);
-        PushVec3(app->globalUBO, light.direction);
-        PushVec3(app->globalUBO, light.position);   
-
-    }
-
-    UnmapBuffer(app->globalUBO);
+    
+    app->lights.push_back({ LightType::Light_Directional , vec3(.0,.0,.2), vec3(1.0, .0, 0.0), vec3(0.0) });
+    app->lights.push_back({ LightType::Light_Directional , vec3(.0,1.,.0), vec3(-1.0, -1.0,0.0), vec3(0.0) });
+    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,.0), vec3(1.0, 1.0, 1.0), vec3(.0,.0,.0) });
+    
+    UpdateLights(app);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
@@ -323,20 +313,53 @@ void Gui(App* app)
 {
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
-
-    ImGui::Text("OpenGL Version: %s", glGetString(GL_VERSION));
-    ImGui::Text("OpenGL Renderer: %s", glGetString(GL_RENDERER));
-    ImGui::Text("OpenGL Vendor: %s", glGetString(GL_VENDOR));
-    ImGui::Text("OpenGL GLSL Version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
-
-    // Display OpenGL extensions
+    
     ImGui::Separator();
-    ImGui::Text("OpenGL Extensions:");
-    GLint num_extensions;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
-    for (int i = 0; i < num_extensions; ++i) {
-        const unsigned char* extension = glGetStringi(GL_EXTENSIONS, GLuint(i));
-        ImGui::Text("%s", extension);
+
+    bool lightChanged = false;
+    ImGui::Text("Lights");
+    for (auto& light : app->lights)
+    {
+        vec3 checkVector;
+
+        ImGui::PushID(&light);
+        float color[3] = { light.color.x, light.color.y ,light.color.z };
+        ImGui::DragFloat3("Color", color, 0.01, 0.0, 1.0);
+        checkVector = vec3(color[0], color[1], color[2]);
+
+        if(checkVector!= light.color)
+        {
+            light.color = checkVector;
+            lightChanged = true;
+        }
+
+        float direction[3] = { light.direction.x, light.direction.y ,light.direction.z };
+        ImGui::DragFloat3("Direction", direction, 0.01, -1.0, 1.0);
+        checkVector = vec3(direction[0], direction[1], direction[2]);
+
+        if (checkVector != light.direction)
+        {
+            light.direction = checkVector;
+            lightChanged = true;
+        }
+
+        float position[3] = { light.position.x, light.position.y ,light.position.z };
+        ImGui::DragFloat3("Position", position);
+        checkVector = vec3(position[0], position[1], position[2]);
+
+        if (checkVector != light.position)
+        {
+            light.position = checkVector;
+            lightChanged = true;
+        }
+        ImGui::PopID();
+        ImGui::Separator();
+        if (lightChanged)
+        {
+            UpdateLights(app);
+        }
+
+
     }
 
     // End the ImGui window
@@ -346,6 +369,25 @@ void Gui(App* app)
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
+}
+
+void UpdateLights(App* app)
+{
+    MapBuffer(app->globalUBO, GL_WRITE_ONLY);
+    PushMat3(app->globalUBO, app->worldCamera.position);
+    PushUInt(app->globalUBO, app->lights.size());
+
+    for (size_t i = 0; i < app->lights.size(); ++i)
+    {
+        AlignHead(app->globalUBO, sizeof(vec4));
+        Light& light = app->lights[i];
+        PushUInt(app->globalUBO, static_cast<int>(light.type));
+        PushVec3(app->globalUBO, light.color);
+        PushVec3(app->globalUBO, light.direction);
+        PushVec3(app->globalUBO, light.position);
+    }
+
+    UnmapBuffer(app->globalUBO);
 }
 
 void Render(App* app)

@@ -16,6 +16,8 @@ void Gui(App* app);
 
 void Update(App* app);
 
+void UpdateLights(App* app);
+
 void Render(App* app);
 
 void CleanUp(App* app);
