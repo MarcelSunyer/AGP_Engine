@@ -161,6 +161,14 @@ struct Light
     vec3 position;
 };
 
+struct FrameBuffer
+{
+    u32 handle;
+    vec2 bufferSize;
+    std::vector<std::pair<GLenum,GLuint>> attachments;
+    GLuint depthHandle;
+
+};
 
 struct App
 {
@@ -228,6 +236,8 @@ struct App
 
     std::vector<Entity> entities;
     std::vector<Light> lights;
+
+    FrameBuffer primaryFBO;
 };
 
 
