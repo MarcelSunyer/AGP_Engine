@@ -28,7 +28,9 @@ layout(location=0) out vec4 oColor;
 
 void main()
 {
-    oColor = texture(uAlbedo, vTexCoord);
+    vec4 albedo = texture(uAlbedo,vTexCoord);
+    
+    oColor = texture(uNormals, vTexCoord) + (albedo * 0.0);
 }
 
 #endif

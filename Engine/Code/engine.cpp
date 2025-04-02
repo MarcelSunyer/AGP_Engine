@@ -241,7 +241,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 
     for (const auto& texture : aFBO.attachments)
     {
-        glUniform1i(glad_glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]), 0);
+        glUniform1i(glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]), 0);
         glActiveTexture(GL_TEXTURE0 + iteration);
 
         glBindTexture(GL_TEXTURE_2D, texture.second);
@@ -528,6 +528,7 @@ void Render(App* app)
             }
 
             glBindFramebuffer(GL_FRAMEBUFFER,0);
+            RenderScreenFillQuad(app, app->primaryFBO);
         }
         break; 
 
