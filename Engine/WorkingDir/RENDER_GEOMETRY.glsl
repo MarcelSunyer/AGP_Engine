@@ -69,7 +69,11 @@ in vec3 vNormal;
 in vec3 vViewDir;
 
 uniform sampler2D uTexture;
-layout(location=0) out vec4 oColor;
+
+layout(location=0) out vec4 oAlbedo;
+layout(location=1) out vec4 oNormals;
+layout(location=2) out vec4 oPosition;
+layout(location=3) out vec4 oViewDir;
 
 vec3 CalcPointLight(Light alight,vec3 aNormal, vec3 aPosition, vec3 aViewDir)
 {
@@ -125,7 +129,12 @@ void main()
         }
 
     }
-    oColor = vec4(returnColor, 1.0);
+
+    oAlbedo = vec4(returnColor, vTexCoord);
+
+    oNormals = vec4(vNormal,0.0);
+    
+    oPosition = vec4(vPosition,0.0);
 }
 
 #endif
