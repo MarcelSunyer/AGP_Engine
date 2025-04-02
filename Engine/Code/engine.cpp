@@ -243,10 +243,11 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     for (const auto& texture : aFBO.attachments)
     {
         GLuint uniformPosition = glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]);
-        glUniform1i(uniformPosition,iteration);
+       
         glActiveTexture(GL_TEXTURE0 + iteration);
 
         glBindTexture(GL_TEXTURE_2D, texture.second);
+        glUniform1i(uniformPosition, iteration);
 
         ++iteration;
     }

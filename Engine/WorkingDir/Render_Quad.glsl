@@ -36,7 +36,7 @@ layout(binding = 0, std140) uniform GlobalParams
 
 in vec2 vTexCoord;
 
-uniform sampler2D uAlbedo;
+uniform sampler2D uColor;
 uniform sampler2D uNormals;
 uniform sampler2D uPosition;
 uniform sampler2D uViewDir;
@@ -86,7 +86,7 @@ vec3 CalcDirLight(Light aLight, vec3 aNormal, vec3 aViewDir)
 void main()
 {
 
-    vec3 Albedo = texture(uAlbedo, vTexCoord).rgb;
+    vec3 Color = vec3(texture(uColor, vTexCoord));
     vec3 Normal = texture(uNormals, vTexCoord).xyz;
     vec3 ViewDir = texture(uViewDir, vTexCoord).xyz;
     vec3 Position = texture(uPosition, vTexCoord).xyz;
@@ -103,7 +103,7 @@ void main()
         {
             returnColor += CalcPointLight(uLight[i], Normal, Position, ViewDir);
         }
-        returnColor.rgb += lightResult * Albedo.rgb;
+        returnColor.rgb += lightResult * Color;
     }
     
     oColor = vec4(returnColor,1.0);
