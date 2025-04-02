@@ -19,13 +19,16 @@ void main()
 
 in vec2 vTexCoord;
 
-uniform sampler2D uTexture;
+uniform sampler2D uAlbedo;
+uniform sampler2D uNormals;
+uniform sampler2D uPosition;
+uniform sampler2D uViewDir;
 
 layout(location=0) out vec4 oColor;
 
 void main()
 {
-    oColor = texture(uTexture, vTexCoord);
+    oColor = texture(uAlbedo, vTexCoord);
 }
 
 #endif

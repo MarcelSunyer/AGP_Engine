@@ -353,7 +353,7 @@ void Init(App* app)
 
     app->mode = Mode_Forward_Geometry;
 
-    app->primaryFBO.CreateFBO(3, app->displaySize.x, app->displaySize.y);
+    app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
 }
 
 

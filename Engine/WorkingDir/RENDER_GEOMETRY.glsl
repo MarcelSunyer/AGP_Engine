@@ -130,11 +130,14 @@ void main()
 
     }
 
-    oAlbedo = vec4(returnColor, vTexCoord);
+    oAlbedo = texture(uTexture, vTexCoord);
 
     oNormals = vec4(vNormal,0.0);
     
     oPosition = vec4(vPosition,0.0);
+    
+    oViewDir = vec4(vViewDir,0.0);
+
 }
 
 #endif
