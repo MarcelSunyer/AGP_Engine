@@ -237,7 +237,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     size_t iteration = 0;
-    const char* uniformNames[] = { "uAlbedo", "oNormals", "oPosition", "oViewDir" };
+    const char* uniformNames[] = { "uAlbedo", "uNormals", "uPosition", "uViewDir" };
 
     for (const auto& texture : aFBO.attachments)
     {
@@ -518,7 +518,7 @@ void Render(App* app)
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
 
-                    //glUniform1i(app->patrickTextureUniform, 0);
+                    glUniform1i(app->patrickTextureUniform, 0);
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
