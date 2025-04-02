@@ -235,13 +235,15 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     //Set the blending state
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
 
     size_t iteration = 0;
     const char* uniformNames[] = { "uAlbedo", "uNormals", "uPosition", "uViewDir" };
 
     for (const auto& texture : aFBO.attachments)
     {
-        glUniform1i(glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]), 0);
+        GLuint uniformPosition = glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]);
+        glUniform1i(uniformPosition,iteration);
         glActiveTexture(GL_TEXTURE0 + iteration);
 
         glBindTexture(GL_TEXTURE_2D, texture.second);
@@ -330,9 +332,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Directional , vec3(.0,.0,.2), vec3(1.0, .0, 0.0), vec3(0.0) });
-    app->lights.push_back({ LightType::Light_Directional , vec3(.0,1.,.0), vec3(-1.0, -1.0,0.0), vec3(0.0) });
-    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,.0), vec3(1.0, 1.0, 1.0), vec3(.0,.0,.0) });
+    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,.60), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
     
     UpdateLights(app);
 
