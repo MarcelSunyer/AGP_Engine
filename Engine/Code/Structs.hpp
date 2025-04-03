@@ -12,13 +12,22 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 
-struct Camera
-{
-    glm::mat4 viewMatrix;
-    glm::mat4 projectionMatrix;
-    vec3 position;
-};
+struct Camera {
+    glm::vec3 position;
+    glm::vec3 front;
+    glm::vec3 up;
+    glm::vec3 right;
+    glm::vec3 worldUp;
+    float yaw;
+    float pitch;
+    float movementSpeed;
+    float mouseSensitivity;
+    bool isRotating;
 
+    glm::mat4 projectionMatrix;
+    glm::mat4 viewMatrix;
+
+};
 
 // Buffer structure
 struct Buffer {

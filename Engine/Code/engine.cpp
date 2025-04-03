@@ -263,6 +263,14 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 
 void Init(App* app)
 {
+    app->worldCamera.position = glm::vec3(10, 15, 50);
+    app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    app->worldCamera.yaw = -90.0f;  // Apunta hacia -Z
+    app->worldCamera.pitch = 0.0f;
+    app->worldCamera.movementSpeed = 5.0f;
+    app->worldCamera.mouseSensitivity = 0.1f;
+    app->worldCamera.isRotating = false;
+    UpdateCameraVectors(&app->worldCamera);
 
     glEnable(GL_DEPTH_TEST);
     //VBO Init
@@ -464,11 +472,80 @@ void Gui(App* app)
     }
     ImGui::End();
 }
+void UpdateCameraVectors(Camera* camera) {
+    
+    glm::vec3 front;
+    front.x = cos(glm::radians(camera->yaw)) * cos(glm::radians(camera->pitch));
+    front.y = sin(glm::radians(camera->pitch));
+    front.z = sin(glm::radians(camera->yaw)) * cos(glm::radians(camera->pitch));
+    camera->front = glm::normalize(front);
 
+    camera->right = glm::normalize(glm::cross(camera->front, camera->worldUp));
+    camera->up = glm::normalize(glm::cross(camera->right, camera->front));
+}
 
-void Update(App* app)
-{
-    // You can handle app->input keyboard/mouse here
+void ProcessMouseMovement(Camera* camera, float xoffset, float yoffset) {
+    
+    xoffset *= camera->mouseSensitivity;
+    yoffset *= camera->mouseSensitivity;
+
+    camera->yaw += xoffset;
+    camera->pitch -= yoffset;
+
+    if (camera->pitch > 89.0f) camera->pitch = 89.0f;
+    if (camera->pitch < -89.0f) camera->pitch = -89.0f;
+
+    UpdateCameraVectors(camera);
+}
+
+void Update(App* app) {
+    // Rotación con mouse
+    if (app->input.mouseButtons[LEFT] == BUTTON_PRESS) {
+        app->worldCamera.isRotating = true;
+    }
+    if (app->input.mouseButtons[LEFT] == BUTTON_RELEASE) {
+        app->worldCamera.isRotating = false;
+    }
+
+    if (app->worldCamera.isRotating) {
+        ProcessMouseMovement(&app->worldCamera,
+            app->input.mouseDelta.x,
+            app->input.mouseDelta.y);
+    }
+
+    // Movimiento de cámara
+    float velocity = app->worldCamera.movementSpeed * app->deltaTime;
+
+    if (app->input.keys[K_W] == BUTTON_PRESSED)
+        app->worldCamera.position += app->worldCamera.front * velocity;
+    if (app->input.keys[K_S] == BUTTON_PRESSED)
+        app->worldCamera.position -= app->worldCamera.front * velocity;
+    if (app->input.keys[K_A] == BUTTON_PRESSED)
+        app->worldCamera.position -= app->worldCamera.right * velocity;
+    if (app->input.keys[K_D] == BUTTON_PRESSED)
+        app->worldCamera.position += app->worldCamera.right * velocity;
+    if (app->input.keys[K_Q] == BUTTON_PRESSED)  // Subir
+        app->worldCamera.position += app->worldCamera.up * velocity;
+    if (app->input.keys[K_E] == BUTTON_PRESSED)  // Bajar
+        app->worldCamera.position -= app->worldCamera.up * velocity;
+
+    // Actualizar matrices
+    app->worldCamera.viewMatrix = glm::lookAt(
+        app->worldCamera.position,
+        app->worldCamera.position + app->worldCamera.front,
+        app->worldCamera.up
+    );
+
+    // Actualizar UBOs
+    glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
+
+    MapBuffer(app->entityUBO, GL_WRITE_ONLY);
+    for (auto& entity : app->entities) {
+        size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
+        glm::mat4 newVPMatrix = VP * entity.worldMatrix;
+        memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
+    }
+    UnmapBuffer(app->entityUBO);
 }
 
 void UpdateLights(App* app)
