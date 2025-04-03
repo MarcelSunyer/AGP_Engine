@@ -352,96 +352,120 @@ void Init(App* app)
 
 void Gui(App* app)
 {
-    // Configurar el espacio de docking (solo una vez al principio)
-    static bool dockingEnabled = false;
-    if (!dockingEnabled)
+    // Configurar el espacio de docking
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    // Barra de menú superior
+    if (ImGui::BeginMainMenuBar())
     {
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
-        dockingEnabled = true;
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("New Scene")) { /* Lógica para nueva escena */ }
+            if (ImGui::MenuItem("Save Scene")) { /* Lógica para guardar escena */ }
+            if (ImGui::MenuItem("Exit")) { app->isRunning = false; }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::MenuItem("Undo")) { /* Lógica para deshacer */ }
+            if (ImGui::MenuItem("Redo")) { /* Lógica para rehacer */ }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
     }
 
-    // Crear ventana acoplable
-    ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoCollapse);
-
-    // FPS Counter
-    ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-
-    ImGui::Separator();
-
-    // Add light button
-    if (ImGui::Button("Add Light"))
+    // Ventana del Editor de Scripts
+    ImGui::Begin("Script Editor");
     {
-        // Add a new point light with default values
-        app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
-        UpdateLights(app);
+        ImGui::Text("Editor de scripts...");
     }
+    ImGui::End();
 
-    // Controles de luces
-    bool lightChanged = false;
-    ImGui::Text("Lights");
-    for (size_t i = 0; i < app->lights.size(); ++i)
+    // Ventana del Inspector con controles de luces
+    ImGui::Begin("Inspector");
     {
-        auto& light = app->lights[i];
-
-        ImGui::PushID(&light);
-
-        // Add delete button for each light (except the first two which are probably your default lights)
-        if (i >= 2) // Only allow deleting lights beyond the first two
-        {
-            if (ImGui::Button("Delete"))
-            {
-                app->lights.erase(app->lights.begin() + i);
-                UpdateLights(app);
-                ImGui::PopID();
-                continue; // Skip the rest for this light since it was deleted
-            }
-        }
-
-        // Light type combo box
-        const char* lightTypes[] = { "Directional", "Point" };
-        int currentType = static_cast<int>(light.type);
-        if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
-        {
-            light.type = static_cast<LightType>(currentType);
-            lightChanged = true;
-        }
-
-        // Control de color
-        float color[3] = { light.color.x, light.color.y, light.color.z };
-        if (ImGui::ColorEdit3("Color", color))
-        {
-            light.color = vec3(color[0], color[1], color[2]);
-            lightChanged = true;
-        }
-
-        // Control de dirección
-        float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
-        if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
-        {
-            light.direction = vec3(direction[0], direction[1], direction[2]);
-            lightChanged = true;
-        }
-
-        // Control de posición
-        float position[3] = { light.position.x, light.position.y, light.position.z };
-        if (ImGui::DragFloat3("Position", position, 0.1f))
-        {
-            light.position = vec3(position[0], position[1], position[2]);
-            lightChanged = true;
-        }
-
-        ImGui::PopID();
+        ImGui::Text("Propiedades de la Luz");
         ImGui::Separator();
-    }
 
-    // Actualizar luces si hubo cambios
-    if (lightChanged)
-    {
-        UpdateLights(app);
-    }
+        // Botón para añadir nuevas luces
+        if (ImGui::Button("Add Light"))
+        {
+            app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
+            UpdateLights(app);
+        }
 
+        // Controles para cada luz
+        for (size_t i = 0; i < app->lights.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            Light& light = app->lights[i];
+            bool lightChanged = false;
+
+            ImGui::Separator();
+            ImGui::Text("Light %d", i + 1);
+
+            // Selección de tipo de luz
+            const char* lightTypes[] = { "Directional", "Point" };
+            int currentType = static_cast<int>(light.type);
+            if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
+            {
+                light.type = static_cast<LightType>(currentType);
+                lightChanged = true;
+            }
+
+            // Color de la luz
+            float color[3] = { light.color.r, light.color.g, light.color.b };
+            if (ImGui::ColorEdit3("Color", color))
+            {
+                light.color = vec3(color[0], color[1], color[2]);
+                lightChanged = true;
+            }
+
+            // Dirección o posición según el tipo
+            if (light.type == LightType::Light_Directional)
+            {
+                float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
+                if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
+                {
+                    light.direction = glm::normalize(vec3(direction[0], direction[1], direction[2]));
+                    lightChanged = true;
+                }
+            }
+            else
+            {
+                float position[3] = { light.position.x, light.position.y, light.position.z };
+                if (ImGui::DragFloat3("Position", position, 0.1f))
+                {
+                    light.position = vec3(position[0], position[1], position[2]);
+                    lightChanged = true;
+                }
+            }
+
+            // Botón para eliminar luces (excepto las 2 primeras por defecto)
+            if (i >= 2)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Delete"))
+                {
+                    app->lights.erase(app->lights.begin() + i);
+                    UpdateLights(app);
+                    ImGui::PopID();
+                    continue;
+                }
+            }
+
+            if (lightChanged)
+            {
+                UpdateLights(app);
+            }
+
+            ImGui::PopID();
+        }
+    }
     ImGui::End();
 }
+
+
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
