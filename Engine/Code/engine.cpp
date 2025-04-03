@@ -388,7 +388,6 @@ void Gui(App* app)
         ImGui::Text("Editor de scripts...");
     }
     ImGui::End();
-    ImGui::Begin("Texture Selector");
     ImGui::Begin("Viewport");
     {
         // Retrieve the color texture from the primary FBO
@@ -438,8 +437,6 @@ void Gui(App* app)
 
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
-
-    ImGui::End();
 
     ImGui::End();
     // Ventana del Inspector con controles de luces
