@@ -80,12 +80,10 @@ vec3 CalcDirLight(Light aLight, vec3 aNormal, vec3 aViewDir)
     
     return(ambient+diffuse+specular);
 
-
 }
 
 void main()
 {
-
     vec3 Color = vec3(texture(uColor, vTexCoord));
     vec3 Normal = texture(uNormals, vTexCoord).xyz;
     vec3 ViewDir = texture(uViewDir, vTexCoord).xyz;

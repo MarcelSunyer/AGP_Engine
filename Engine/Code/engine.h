@@ -5,8 +5,8 @@
 #pragma once
 
 #include "platform.h"
-#include "../AssimpModelLoading.h"
-#include "../BufferManagement.h"
+#include "AssimpModelLoading.h"
+#include "BufferManagement.h"
 #include <glad/glad.h>
 #include "Structs.hpp"
 

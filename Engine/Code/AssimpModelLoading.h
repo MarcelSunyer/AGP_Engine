@@ -1,9 +1,9 @@
 #ifndef ASSIMP_MODEL_LOADER_H
 #define ASSIMP_MODEL_LOADER_H
 
-#include "Code/platform.h"
-#include "Code/engine.h"
-#include "Code/Structs.hpp"
+#include "platform.h"
+#include "engine.h"
+#include "Structs.hpp"
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
