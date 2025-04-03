@@ -293,10 +293,6 @@ void Init(App* app)
     //Program Init
     app->texturedGeometryProgramIdx = LoadProgram(app, "Render_Quad.glsl", "Render_Quad");
 
-    // esto lo haces 2 veces inutil ya se hace en el render
-   /* Program& quadprogram = app->programs[app->texturedGeometryProgramIdx];
-    Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];*/
-
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
     //Texture Init
