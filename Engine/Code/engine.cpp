@@ -231,6 +231,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glUseProgram(programTexturedGeometry.handle);
     //Bind the VAO
     glBindVertexArray(app->vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 
     //Set the blending state
     glEnable(GL_BLEND);
@@ -238,7 +239,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
 
     size_t iteration = 0;
-    const char* uniformNames[] = { "uAlbedo", "uNormals", "uPosition", "uViewDir" };
+    const char* uniformNames[] = { "uColor", "uNormals", "uPosition", "uViewDir" };
 
     for (const auto& texture : aFBO.attachments)
     {
@@ -251,13 +252,6 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 
         ++iteration;
     }
-
-
-    //Bind the texture into unit 0 (and make its texture sample from unit 0)
-    glUniform1i(app->programUniformTexture, 0);
-    glActiveTexture(GL_TEXTURE0);
-    GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-    glBindTexture(GL_TEXTURE_2D, textureHandle);
 
     //glDrawElements() -> De momento hardcoded a 6
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
@@ -273,7 +267,6 @@ void Init(App* app)
     glEnable(GL_DEPTH_TEST);
     //VBO Init
     app->embeddedVertices = CreateStaticIndexBuffer(sizeof(vertices));
-
     glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices.handle);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -529,6 +522,7 @@ void Render(App* app)
             }
 
             glBindFramebuffer(GL_FRAMEBUFFER,0);
+            glUseProgram(0);
             RenderScreenFillQuad(app, app->primaryFBO);
         }
         break; 

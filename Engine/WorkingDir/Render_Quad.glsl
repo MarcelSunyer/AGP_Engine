@@ -97,11 +97,11 @@ void main()
         vec3 lightResult = vec3(0.0);
         if(uLight[i].type == 0)
         {
-            returnColor += CalcDirLight(uLight[i], Normal, ViewDir);
+            lightResult = CalcDirLight(uLight[i], Normal, ViewDir);
         }
         else if(uLight[i].type == 1)
         {
-            returnColor += CalcPointLight(uLight[i], Normal, Position, ViewDir);
+            lightResult = CalcPointLight(uLight[i], Normal, Position, ViewDir);
         }
         returnColor.rgb += lightResult * Color;
     }
