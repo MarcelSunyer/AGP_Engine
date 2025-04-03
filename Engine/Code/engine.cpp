@@ -313,8 +313,10 @@ void Init(App* app)
     float near = 0.1f;
     float far = 1000.0f;
     app->worldCamera.projectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, near, far);
-    app->worldCamera.viewMatrix = glm::lookAt(vec3(0,10, 35), vec3(0, 1, 0), vec3(0, 1, 0));
-
+    app->worldCamera.viewMatrix = glm::lookAt(vec3(10,15, 50), vec3(0, 1, 0), vec3(0, 1, 0));
+    
+    //Add
+    app->materials[app->models[planeIdx].materialIdx[0]].albedoTextureIdx = app->whiteTexIdx;
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
@@ -323,6 +325,7 @@ void Init(App* app)
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
     app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,1.0), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
+    app->lights.push_back({ LightType::Light_Directional , vec3(0.5,0.5,0.5), vec3(0,0.770,0.), vec3(0) });
     
     UpdateLights(app);
 
@@ -349,61 +352,96 @@ void Init(App* app)
 
 void Gui(App* app)
 {
-    ImGui::Begin("Info");
-    ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
-    
-    ImGui::Separator();
-
-    bool lightChanged = false;
-    ImGui::Text("Lights");
-    for (auto& light : app->lights)
+    // Configurar el espacio de docking (solo una vez al principio)
+    static bool dockingEnabled = false;
+    if (!dockingEnabled)
     {
-        vec3 checkVector;
-
-        ImGui::PushID(&light);
-        float color[3] = { light.color.x, light.color.y ,light.color.z };
-        ImGui::DragFloat3("Color", color);
-        checkVector = vec3(color[0], color[1], color[2]);
-
-        if(checkVector!= light.color)
-        {
-            light.color = checkVector;
-            lightChanged = true;
-        }
-
-        float direction[3] = { light.direction.x, light.direction.y ,light.direction.z };
-        ImGui::DragFloat3("Direction", direction, 0.01, -1.0, 1.0);
-        checkVector = vec3(direction[0], direction[1], direction[2]);
-
-        if (checkVector != light.direction)
-        {
-            light.direction = checkVector;
-            lightChanged = true;
-        }
-
-        float position[3] = { light.position.x, light.position.y ,light.position.z };
-        ImGui::DragFloat3("Position", position);
-        checkVector = vec3(position[0], position[1], position[2]);
-
-        if (checkVector != light.position)
-        {
-            light.position = checkVector;
-            lightChanged = true;
-        }
-        ImGui::PopID();
-        ImGui::Separator();
-        if (lightChanged)
-        {
-            UpdateLights(app);
-        }
-
-
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        dockingEnabled = true;
     }
 
-    // End the ImGui window
+    // Crear ventana acoplable
+    ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoCollapse);
+
+    // FPS Counter
+    ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
+
+    ImGui::Separator();
+
+    // Add light button
+    if (ImGui::Button("Add Light"))
+    {
+        // Add a new point light with default values
+        app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
+        UpdateLights(app);
+    }
+
+    // Controles de luces
+    bool lightChanged = false;
+    ImGui::Text("Lights");
+    for (size_t i = 0; i < app->lights.size(); ++i)
+    {
+        auto& light = app->lights[i];
+
+        ImGui::PushID(&light);
+
+        // Add delete button for each light (except the first two which are probably your default lights)
+        if (i >= 2) // Only allow deleting lights beyond the first two
+        {
+            if (ImGui::Button("Delete"))
+            {
+                app->lights.erase(app->lights.begin() + i);
+                UpdateLights(app);
+                ImGui::PopID();
+                continue; // Skip the rest for this light since it was deleted
+            }
+        }
+
+        // Light type combo box
+        const char* lightTypes[] = { "Directional", "Point" };
+        int currentType = static_cast<int>(light.type);
+        if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
+        {
+            light.type = static_cast<LightType>(currentType);
+            lightChanged = true;
+        }
+
+        // Control de color
+        float color[3] = { light.color.x, light.color.y, light.color.z };
+        if (ImGui::ColorEdit3("Color", color))
+        {
+            light.color = vec3(color[0], color[1], color[2]);
+            lightChanged = true;
+        }
+
+        // Control de dirección
+        float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
+        if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
+        {
+            light.direction = vec3(direction[0], direction[1], direction[2]);
+            lightChanged = true;
+        }
+
+        // Control de posición
+        float position[3] = { light.position.x, light.position.y, light.position.z };
+        if (ImGui::DragFloat3("Position", position, 0.1f))
+        {
+            light.position = vec3(position[0], position[1], position[2]);
+            lightChanged = true;
+        }
+
+        ImGui::PopID();
+        ImGui::Separator();
+    }
+
+    // Actualizar luces si hubo cambios
+    if (lightChanged)
+    {
+        UpdateLights(app);
+    }
+
     ImGui::End();
 }
-
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
