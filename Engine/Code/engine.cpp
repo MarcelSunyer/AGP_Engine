@@ -322,7 +322,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,.60), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
+    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,1.0), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
     
     UpdateLights(app);
 
@@ -362,7 +362,7 @@ void Gui(App* app)
 
         ImGui::PushID(&light);
         float color[3] = { light.color.x, light.color.y ,light.color.z };
-        ImGui::DragFloat3("Color", color, 0.01, 0.0, 1.0);
+        ImGui::DragFloat3("Color", color);
         checkVector = vec3(color[0], color[1], color[2]);
 
         if(checkVector!= light.color)
