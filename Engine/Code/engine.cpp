@@ -332,8 +332,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,1.0), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
-    app->lights.push_back({ LightType::Light_Directional , vec3(0.5,0.5,0.5), vec3(0,0.770,0.), vec3(0) });
+    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,20.0), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
     
     UpdateLights(app);
 
@@ -442,6 +441,7 @@ void Gui(App* app)
     // Ventana del Inspector con controles de luces
     ImGui::Begin("Inspector");
     {
+        ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
         ImGui::Text("Propiedades de la Luz");
         ImGui::Separator();
 
@@ -467,6 +467,8 @@ void Gui(App* app)
             int currentType = static_cast<int>(light.type);
             if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
             {
+
+                
                 light.type = static_cast<LightType>(currentType);
                 lightChanged = true;
             }
