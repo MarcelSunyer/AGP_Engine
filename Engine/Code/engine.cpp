@@ -332,7 +332,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Point , vec3(1.0,.0,20.0), vec3(1.0, 1.0, 1.0), vec3(.0,10.0,.0) });
+    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 0.0f, 20.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f), 1.0f });
     
     UpdateLights(app);
 
@@ -455,20 +455,19 @@ void Gui(App* app)
         // Controles para cada luz
         for (size_t i = 0; i < app->lights.size(); ++i)
         {
+
             ImGui::PushID(static_cast<int>(i));
             Light& light = app->lights[i];
             bool lightChanged = false;
 
             ImGui::Separator();
             ImGui::Text("Light %d", i + 1);
-
+            float intensity = light.intensity;
             // Selección de tipo de luz
             const char* lightTypes[] = { "Directional", "Point" };
             int currentType = static_cast<int>(light.type);
             if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
             {
-
-                
                 light.type = static_cast<LightType>(currentType);
                 lightChanged = true;
             }
@@ -500,8 +499,11 @@ void Gui(App* app)
                     lightChanged = true;
                 }
             }
-
-
+            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f, "%.001f"))
+            {
+                light.intensity = intensity;
+                lightChanged = true;
+            }
 
             ImGui::SameLine();
             if (ImGui::Button("Delete"))
@@ -550,7 +552,51 @@ void ProcessMouseMovement(Camera* camera, float xoffset, float yoffset) {
     UpdateCameraVectors(camera);
 }
 
+void CheckAndReloadShaders(App* app)
+{
+    for (auto& program : app->programs)
+    {
+        u64 currentTimestamp = GetFileLastWriteTimestamp(program.filepath.c_str());
+        if (currentTimestamp != program.lastWriteTimestamp)
+        {
+            // Recreate program
+            String programSource = ReadTextFile(program.filepath.c_str());
+            GLuint newHandle = CreateProgramFromSource(programSource, program.programName.c_str());
+
+            if (newHandle != 0)
+            {
+                // Delete old program
+                glDeleteProgram(program.handle);
+
+                // Update program
+                program.handle = newHandle;
+                program.lastWriteTimestamp = currentTimestamp;
+
+                // Rebuild vertex input layout
+                program.vertexInputLayout.attributes.clear();
+                GLint attributeCount = 0;
+                glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
+                for (size_t i = 0; i < attributeCount; ++i)
+                {
+                    GLchar name[248];
+                    GLsizei realNameSize = 0;
+                    GLsizei attribSize = 0;
+                    GLenum attribType;
+                    glGetActiveAttrib(program.handle, i, ARRAY_COUNT(name), &realNameSize, &attribSize, &attribType, name);
+                    GLuint attribLocation = glGetAttribLocation(program.handle, name);
+                    program.vertexInputLayout.attributes.push_back({ static_cast<u8>(attribLocation), static_cast<u8>(attribSize) });
+                }
+
+                ELOG("Reloaded shader: %s", program.filepath.c_str());
+            }
+        }
+    }
+}
+
 void Update(App* app) {
+
+    CheckAndReloadShaders(app);
+
     // Rotación con mouse
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESS) {
         app->worldCamera.isRotating = true;
@@ -611,7 +657,7 @@ void UpdateLights(App* app)
         AlignHead(app->globalUBO, sizeof(vec4));
         Light& light = app->lights[i];
         PushUInt(app->globalUBO, static_cast<int>(light.type));
-        PushVec3(app->globalUBO, light.color);
+        PushVec3(app->globalUBO, light.color * light.intensity);
         PushVec3(app->globalUBO, light.direction);
         PushVec3(app->globalUBO, light.position);
     }
