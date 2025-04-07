@@ -346,7 +346,7 @@ void Init(App* app)
     {
         for (size_t x = -4; x != 4; ++x)
         {
-            CreateEntity(app, app->patrickIdx, VP,glm::translate(glm::vec3(x*6,0,z*5)));
+            CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(x*6,0,z*5)));
         }
     }
     UnmapBuffer(entityUBO);
@@ -611,21 +611,32 @@ void Update(App* app) {
             app->input.mouseDelta.y);
     }
 
-    // Movimiento de cámara
     float velocity = app->worldCamera.movementSpeed * app->deltaTime;
 
     if (app->input.keys[K_W] == BUTTON_PRESSED)
+    {
         app->worldCamera.position += app->worldCamera.front * velocity;
+    }
     if (app->input.keys[K_S] == BUTTON_PRESSED)
+    {
         app->worldCamera.position -= app->worldCamera.front * velocity;
+    }
     if (app->input.keys[K_A] == BUTTON_PRESSED)
+    {
         app->worldCamera.position -= app->worldCamera.right * velocity;
+    }
     if (app->input.keys[K_D] == BUTTON_PRESSED)
+    {
         app->worldCamera.position += app->worldCamera.right * velocity;
-    if (app->input.keys[K_Q] == BUTTON_PRESSED)  // Subir
+    }
+    if (app->input.keys[K_Q] == BUTTON_PRESSED)
+    {
         app->worldCamera.position += app->worldCamera.up * velocity;
-    if (app->input.keys[K_E] == BUTTON_PRESSED)  // Bajar
+    }
+    if (app->input.keys[K_E] == BUTTON_PRESSED)
+    {
         app->worldCamera.position -= app->worldCamera.up * velocity;
+    }
 
     // Actualizar matrices
     app->worldCamera.viewMatrix = glm::lookAt(
