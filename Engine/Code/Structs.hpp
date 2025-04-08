@@ -330,6 +330,4 @@ struct App
 
 };
 
-
-
 #endif // !STRUCTS

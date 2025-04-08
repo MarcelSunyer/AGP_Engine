@@ -450,7 +450,15 @@ void Gui(App* app)
             app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
             UpdateLights(app);
         }
-
+        if (ImGui::Button("Add 1000 Point Lights"))
+        {
+            for (size_t i = 0; i < 1000; i++)
+            {
+                app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
+                UpdateLights(app);
+            }
+            
+        }
         // Controles para cada luz
         for (size_t i = 0; i < app->lights.size(); ++i)
         {
