@@ -387,51 +387,55 @@ void Gui(App* app)
         ImGui::Text("Editor de scripts...");
     }
     ImGui::End();
+
+    GLuint colorTextureHandle;
+    ImVec2 viewportSize;
+
+
     ImGui::Begin("Viewport");
     {
         // Retrieve the color texture from the primary FBO
         if (!app->primaryFBO.attachments.empty())
         {
             // Assuming the first attachment is the color buffer
-            GLuint colorTextureHandle = app->primaryFBO.attachments.begin()->second;
-            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+            colorTextureHandle = app->primaryFBO.attachments[app->attachmentIndex].second;
+            viewportSize = ImGui::GetContentRegionAvail();
 
-            // Display the texture, flipping UVs vertically to correct OpenGL's texture origin
             ImGui::Image((ImTextureID)(intptr_t)colorTextureHandle, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
         }
     }
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.6f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
 
-    // Calculate centered position
     ImGuiStyle& style = ImGui::GetStyle();
     const float buttonWidth = 80.0f;
     const int buttonCount = 4;
     const float totalWidth = (buttonWidth * buttonCount) + (style.ItemSpacing.x * (buttonCount - 1));
-    const float topMargin = 20.0f; // Adjust this value for desired top spacing
+    const float topMargin = 20.0f;
     float startX = (ImGui::GetWindowContentRegionWidth() - totalWidth) * 0.5f;
 
     ImGui::SetCursorPos(ImVec2(startX, topMargin));
 
-    // Buttons
+   
     if (ImGui::Button("Albedo", ImVec2(buttonWidth, 30)))
     {
-
+        app->attachmentIndex = 0;
+        
     }
     ImGui::SameLine();
     if (ImGui::Button("Normals", ImVec2(buttonWidth, 30)))
     {
-
+        app->attachmentIndex = 1;
     }
     ImGui::SameLine();
     if (ImGui::Button("Position", ImVec2(buttonWidth, 30)))
     {
-
+        app->attachmentIndex = 2;
     }
     ImGui::SameLine();
     if (ImGui::Button("ViewDir", ImVec2(buttonWidth, 30)))
     {
-
+        app->attachmentIndex = 3;
     }
 
     ImGui::PopStyleColor();

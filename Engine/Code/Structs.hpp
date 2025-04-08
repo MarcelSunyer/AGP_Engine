@@ -317,6 +317,9 @@ struct App
     std::vector<Light> lights;
 
     FrameBuffer primaryFBO;
+
+    int attachmentIndex;
+
 };
 
 
