@@ -261,7 +261,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glUseProgram(0);
 }
 
-void Init(App* app)
+void SetUpCamera(App* app)
 {
     app->worldCamera.position = glm::vec3(10, 15, 50);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -271,7 +271,10 @@ void Init(App* app)
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
     UpdateCameraVectors(&app->worldCamera);
+}
 
+void InitMeshBuffers(App* app)
+{
     glEnable(GL_DEPTH_TEST);
     //VBO Init
     app->embeddedVertices = CreateStaticIndexBuffer(sizeof(vertices));
@@ -297,18 +300,20 @@ void Init(App* app)
     glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, app->embeddedElements);
     glBindVertexArray(0);
+}
+
+void Init(App* app)
+{
+    SetUpCamera(app);
+
+    InitMeshBuffers(app);
 
     //Program Init
     app->texturedGeometryProgramIdx = LoadProgram(app, "Render_Quad.glsl", "Render_Quad");
 
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
-    //Texture Init
-    app->diceTexIdx = LoadTexture2D(app, "dice.png");
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
-    app->blackTexIdx = LoadTexture2D(app, "color_black.png");
-    app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
-    app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
 
     //Geometry rendering loads
     app->patrickIdx = LoadModel(app, "Patrick/Patrick.obj");
@@ -342,13 +347,9 @@ void Init(App* app)
 
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
 
-    for (size_t z = -4; z != 4; ++z)
-    {
-        for (size_t x = -4; x != 4; ++x)
-        {
-            CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(x*6,0,z*5)));
-        }
-    }
+    CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(6, 0, 5)));
+    CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(0, 0, 0)));
+
     UnmapBuffer(entityUBO);
 
     app->mode = Mode_Forward_Geometry;
@@ -388,18 +389,14 @@ void Gui(App* app)
     }
     ImGui::End();
 
-    GLuint colorTextureHandle;
-    ImVec2 viewportSize;
-
-
     ImGui::Begin("Viewport");
     {
         // Retrieve the color texture from the primary FBO
         if (!app->primaryFBO.attachments.empty())
         {
             // Assuming the first attachment is the color buffer
-            colorTextureHandle = app->primaryFBO.attachments[app->attachmentIndex].second;
-            viewportSize = ImGui::GetContentRegionAvail();
+            GLuint colorTextureHandle = app->primaryFBO.attachments[app->attachmentIndex].second;
+            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
             ImGui::Image((ImTextureID)(intptr_t)colorTextureHandle, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
         }
@@ -477,8 +474,8 @@ void Gui(App* app)
             }
 
             // Color de la luz
-            float color[3] = { light.color.r, light.color.g, light.color.b };
-            if (ImGui::ColorEdit3("Color", color))
+            float color[3] = { light.color[0], light.color[1], light.color[2] };
+            if (ImGui::DragFloat3("Color", color))
             {
                 light.color = vec3(color[0], color[1], color[2]);
                 lightChanged = true;
@@ -598,6 +595,8 @@ void CheckAndReloadShaders(App* app)
 }
 
 void Update(App* app) {
+    
+    app->primaryFBO.Resize(app->displaySize.x, app->displaySize.y);
 
     CheckAndReloadShaders(app);
 
@@ -686,36 +685,6 @@ void Render(App* app)
     {
         case Mode_TexturedQuad:
         {
-               
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // Set the viewport
-            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-            //Bind the program
-            Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
-            glUseProgram(programTexturedGeometry.handle);
-            //Bind the VAO
-            glBindVertexArray(app->vao);
-
-            //Set the blending state
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-            //Bind the texture into unit 0 (and make its texture sample from unit 0)
-            glUniform1i(app->programUniformTexture, 0);
-            glActiveTexture(GL_TEXTURE0);
-            GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-            glBindTexture(GL_TEXTURE_2D, textureHandle);
-
-            //glDrawElements() -> De momento hardcoded a 6
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-            glBindVertexArray(0);
-
-            glUseProgram(0);
-
             
         }break;
         case Mode_Forward_Geometry:

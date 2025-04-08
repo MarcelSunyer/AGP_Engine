@@ -179,8 +179,14 @@ struct FrameBuffer
     std::vector<std::pair<GLenum,GLuint>> attachments;
     GLuint depthHandle;
 
+    uint64_t _width;
+    uint64_t _height;
+    
     bool CreateFBO(const uint64_t aAttachments, const uint64_t aWidth, const uint64_t aHeight)
     {
+        _width = aWidth;
+        _height = aHeight;
+
         if (aAttachments > GL_MAX_COLOR_ATTACHMENTS)
         {
             return false;
@@ -246,7 +252,15 @@ struct FrameBuffer
         glDeleteTextures(1, &depthHandle);
         depthHandle = 0;
     }
+    
+    void Resize(uint64_t width, uint64_t height)
+    {
+        if (width == _width && height == _height)
+            return;
 
+        Clean();
+        CreateFBO(4, width, height);
+    }
 };
 
 struct App
@@ -281,13 +295,7 @@ struct App
     u32 patrickIdx;
     u32 patrickTextureUniform;
 
-
-    // texture indices
-    u32 diceTexIdx;
     u32 whiteTexIdx;
-    u32 blackTexIdx;
-    u32 normalTexIdx;
-    u32 magentaTexIdx;
 
     // Mode
     Mode mode;
