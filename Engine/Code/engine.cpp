@@ -473,7 +473,7 @@ void Gui(App* app)
 
             // Mirar esto de la luz rarete
             float color[3] = { light.color[0], light.color[1], light.color[2] };
-            if (ImGui::DragFloat3("Color", color))
+            if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
             {
                 light.color = vec3(color[0], color[1], color[2]);
                 lightChanged = true;
