@@ -5,18 +5,15 @@
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec2 aTexCoord;
 
-
 out vec2 vTexCoord;
 
 void main()
 {
     vTexCoord = aTexCoord;
     gl_Position = vec4(aPosition, 1.0);
-   
 }
 
 #elif defined(FRAGMENT) ////////////////////////////////////////
-
 
 struct Light
 {
@@ -24,7 +21,6 @@ struct Light
     vec3 color;
     vec3 direction;
     vec3 position;
-
 };
 
 layout(binding = 0, std140) uniform GlobalParams
@@ -43,71 +39,69 @@ uniform sampler2D uViewDir;
 
 layout(location=0) out vec4 oColor;
 
-vec3 CalcPointLight(Light alight,vec3 aNormal, vec3 aPosition, vec3 aViewDir)
+vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir)
 {
-    vec3 lightDir = normalize(alight.position - aPosition);
-    float diff = max(dot(aNormal,lightDir),0.0);
-    vec3 reflectDir = reflect(-lightDir,aNormal);
-    float spec = pow(max(dot(aViewDir, reflectDir),0.0),2.0);
-
-    float distance = length(alight.position - aPosition);
-
-    float constant = 1.0f;
-    float liniar = 0.09f;
-    float quadratic = 0.032f;
-    float attenuation = 1.0 / (constant + liniar * distance + quadratic * (distance*distance));
-
-    vec3 ambient = alight.color * 0.2;
-    vec3 diffuse = alight.color * diff;
-    vec3 specular = 0.1 * spec * alight.color;
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
+    // Light direction and distance calculations
+    vec3 lightDir = normalize(light.position - position);
+    float distance = length(light.position - position);
     
-    return(ambient+diffuse+specular);
+    // Attenuation using optimized coefficients
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+    
+    // Diffuse component
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff;
+    
+    // Specular component with improved calculations
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(normalize(viewDir), reflectDir), 0.0), 32.0);
+    vec3 specular = light.color * spec * 0.5;
+    
+    // Combine components with attenuation
+    return (diffuse + specular) * attenuation;
 }
 
-vec3 CalcDirLight(Light aLight, vec3 aNormal, vec3 aViewDir)
+vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir)
 {
-    vec3 lightDir = normalize(-aLight.direction);
-    float diff = max(dot(aNormal,lightDir),0.0);
-    vec3 reflectDir = reflect(-lightDir,aNormal);
-    float spec = pow(max(dot(aViewDir,reflectDir), 0.0), 2.0);
-
-    vec3 ambient = aLight.color * 0.2;
-    vec3 diffuse = aLight.color * diff;
-    vec3 specular = 0.1 * spec * aLight.color;
+    // Light direction
+    vec3 lightDir = normalize(-light.direction);
     
-    return(ambient+diffuse+specular);
-
+    // Diffuse component
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff;
+    
+    // Specular component with better highlights
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(normalize(viewDir), reflectDir), 0.0), 32.0);
+    vec3 specular = light.color * spec * 0.5;
+    
+    return diffuse + specular;
 }
 
 void main()
 {
-    vec3 Color = vec3(texture(uColor, vTexCoord));
-    vec3 Normal = texture(uNormals, vTexCoord).xyz;
-    vec3 ViewDir = texture(uViewDir, vTexCoord).xyz;
-    vec3 Position = texture(uPosition, vTexCoord).xyz;
+    // Texture sampling with proper normalization
+    vec3 baseColor = texture(uColor, vTexCoord).rgb;
+    vec3 normal = normalize(texture(uNormals, vTexCoord).rgb * 2.0 - 1.0);
+    vec3 position = texture(uPosition, vTexCoord).rgb;
+    vec3 viewDir = normalize(texture(uViewDir, vTexCoord).rgb);
 
-    vec3 returnColor = vec3(0.0);
+    vec3 finalColor = vec3(0.0);
+    
     for(int i = 0; i < uLightCount; ++i)
-    { 
-        vec3 lightResult = vec3(0.0);
-        if(uLight[i].type == 0)
+    {
+        if(uLight[i].type == 0) // Directional light
         {
-            lightResult = CalcDirLight(uLight[i], Normal, ViewDir);
+            finalColor += CalcDirLight(uLight[i], normal, viewDir) * baseColor;
         }
-        else if(uLight[i].type == 1)
+        else if(uLight[i].type == 1) // Point light
         {
-            lightResult = CalcPointLight(uLight[i], Normal, Position, ViewDir);
+            finalColor += CalcPointLight(uLight[i], normal, position, viewDir) * baseColor;
         }
-        returnColor.rgb += lightResult * Color;
     }
     
-    oColor = vec4(returnColor,1.0);
+    oColor = vec4(finalColor, 1.0);
 }
 
 #endif
 #endif
-
-

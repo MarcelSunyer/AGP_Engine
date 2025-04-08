@@ -335,7 +335,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 0.0f, 20.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f), 1.0f });
+    app->lights.push_back({ LightType::Light_Directional, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0.0f, 10.0f, 0.0f), 1.0f });
     
     UpdateLights(app);
 
