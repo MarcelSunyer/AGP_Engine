@@ -473,7 +473,7 @@ void Gui(App* app)
                 lightChanged = true;
             }
 
-            // Color de la luz
+            // Mirar esto de la luz rarete
             float color[3] = { light.color[0], light.color[1], light.color[2] };
             if (ImGui::DragFloat3("Color", color))
             {
