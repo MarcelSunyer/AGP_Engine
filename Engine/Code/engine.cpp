@@ -314,9 +314,9 @@ void Init(App* app)
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
-
+    app->patrickTextureUniform = 
     //Geometry rendering loads
-    app->patrickIdx = LoadModel(app, "Patrick/Patrick.obj");
+    app->patrickIdx = LoadModel(app, "Patrick/Pikachu.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
 
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
@@ -328,8 +328,6 @@ void Init(App* app)
     app->worldCamera.projectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, near, far);
     app->worldCamera.viewMatrix = glm::lookAt(vec3(10,15, 50), vec3(0, 1, 0), vec3(0, 1, 0));
     
-    //Add
-    app->materials[app->models[planeIdx].materialIdx[0]].albedoTextureIdx = app->whiteTexIdx;
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
