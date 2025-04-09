@@ -229,6 +229,7 @@ struct FrameBuffer
         }
 
         glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthHandle, 0);
+        attachments.push_back({ GL_DEPTH_ATTACHMENT, depthHandle });
 
         GLenum frameBufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 
@@ -328,6 +329,17 @@ struct App
 
     int attachmentIndex;
 
+    enum BufferViewMode {
+        BUFFER_VIEW_MAIN,
+        BUFFER_VIEW_ALBEDO,
+        BUFFER_VIEW_NORMALS,
+        BUFFER_VIEW_POSITION,
+        BUFFER_VIEW_VIEWDIR
+    };
+
+    BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
+    bool showDepthOverlay = false;
+    float depthIntensity = 0.5f;
 };
 
 #endif // !STRUCTS

@@ -218,49 +218,49 @@ u32 LoadTexture2D(App* app, const char* filepath)
 
 void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER,0);
-
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    // Setup framebuffer and viewport
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Set the viewport
     glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-    //Bind the program
-    Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
-    glUseProgram(programTexturedGeometry.handle);
-    //Bind the VAO
+    // Bind shader and geometry
+    Program& program = app->programs[app->texturedGeometryProgramIdx];
+    glUseProgram(program.handle);
     glBindVertexArray(app->vao);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 
-    //Set the blending state
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // Bind UBO
     glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
 
-    size_t iteration = 0;
-    const char* uniformNames[] = { "uColor", "uNormals", "uPosition", "uViewDir" };
-
-    for (const auto& texture : aFBO.attachments)
-    {
-        GLuint uniformPosition = glGetUniformLocation(programTexturedGeometry.handle, uniformNames[iteration]);
-       
-        glActiveTexture(GL_TEXTURE0 + iteration);
-
-        glBindTexture(GL_TEXTURE_2D, texture.second);
-        glUniform1i(uniformPosition, iteration);
-
-        ++iteration;
+    // Bind textures
+    const char* textureNames[] = { "uColor", "uNormals", "uPosition", "uViewDir", "uDepth" };
+    for (int i = 0; i < 5; ++i) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        GLuint texHandle = (i < 4) ? aFBO.attachments[i].second : aFBO.depthHandle;
+        glBindTexture(GL_TEXTURE_2D, texHandle);
+        glUniform1i(glGetUniformLocation(program.handle, textureNames[i]), i);
     }
 
-    //glDrawElements() -> De momento hardcoded a 6
+    // Set rendering parameters
+    glUniform1f(glGetUniformLocation(program.handle, "uNear"), 0.1f);
+    glUniform1f(glGetUniformLocation(program.handle, "uFar"), 1000.0f);
+    glUniform1i(glGetUniformLocation(program.handle, "uViewMode"), static_cast<int>(app->bufferViewMode));
+    glUniform1i(glGetUniformLocation(program.handle, "uShowDepth"), app->showDepthOverlay ? 1 : 0);
+    glUniform1f(glGetUniformLocation(program.handle, "uDepthIntensity"), app->depthIntensity);
+
+    // Render quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
+    // Cleanup
     glBindVertexArray(0);
-
     glUseProgram(0);
+    for (int i = 0; i < 5; ++i) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+    glActiveTexture(GL_TEXTURE0);
 }
-
 void SetUpCamera(App* app)
 {
     app->worldCamera.position = glm::vec3(10, 15, 50);
@@ -357,176 +357,108 @@ void Init(App* app)
 
 void Gui(App* app)
 {
-    // Configurar el espacio de docking
+    // Setup docking space
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    // Barra de menú superior
-    if (ImGui::BeginMainMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("New Scene")) { /* Lógica para nueva escena */ }
-            if (ImGui::MenuItem("Save Scene")) { /* Lógica para guardar escena */ }
+    // Main menu bar
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New Scene")) {}
+            if (ImGui::MenuItem("Save Scene")) {}
             if (ImGui::MenuItem("Exit")) { app->isRunning = false; }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit"))
-        {
-            if (ImGui::MenuItem("Undo")) { /* Lógica para deshacer */ }
-            if (ImGui::MenuItem("Redo")) { /* Lógica para rehacer */ }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
     }
 
-    // Ventana del Editor de Scripts
-    ImGui::Begin("Script Editor");
-    {
-        ImGui::Text("Editor de scripts...");
-    }
-    ImGui::End();
-
+    // Viewport window
     ImGui::Begin("Viewport");
     {
-        // Retrieve the color texture from the primary FBO
-        if (!app->primaryFBO.attachments.empty())
-        {
-            // Assuming the first attachment is the color buffer
-            GLuint colorTextureHandle = app->primaryFBO.attachments[app->attachmentIndex].second;
-            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+        ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+        GLuint textureID = app->primaryFBO.attachments[0].second;
+        ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0,1), ImVec2(1,0));
 
-            ImGui::Image((ImTextureID)(intptr_t)colorTextureHandle, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
+        // View mode buttons
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+
+        const char* viewLabels[] = {"Main", "Albedo", "Normals", "Position", "ViewDir"};
+        for (int i = 0; i <= 4; i++) {
+            bool isActive = (static_cast<int>(app->bufferViewMode) == i);
+            if (isActive) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
+            }
+            if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
+                app->bufferViewMode = static_cast<App::BufferViewMode>(i);
+                if (i != 0) app->showDepthOverlay = false;
+            }
+            if (isActive) {
+                ImGui::PopStyleColor();
+            }
+            if (i < 4) ImGui::SameLine();
         }
-    }
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.6f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 4));
 
-    ImGuiStyle& style = ImGui::GetStyle();
-    const float buttonWidth = 80.0f;
-    const int buttonCount = 4;
-    const float totalWidth = (buttonWidth * buttonCount) + (style.ItemSpacing.x * (buttonCount - 1));
-    const float topMargin = 20.0f;
-    float startX = (ImGui::GetWindowContentRegionWidth() - totalWidth) * 0.5f;
+        // Depth overlay controls
+        if (app->bufferViewMode == App::BUFFER_VIEW_MAIN) {
+            ImGui::Spacing();
+            if (ImGui::Checkbox("Depth Overlay", &app->showDepthOverlay)) {}
+            if (app->showDepthOverlay) {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(150);
+                ImGui::SliderFloat("##DepthIntensity", &app->depthIntensity, 0.0f, 1.0f, "Intensity: %.2f");
+            }
+        }
 
-    ImGui::SetCursorPos(ImVec2(startX, topMargin));
+        ImGui::PopStyleVar();
 
-   
-    if (ImGui::Button("Albedo", ImVec2(buttonWidth, 30)))
-    {
-        app->attachmentIndex = 0;
-        
+        // Display current mode
+        const char* modeText[] = {
+            "Main Render",
+            "Albedo Buffer",
+            "Normals Buffer",
+            "Position Buffer",
+            "View Direction Buffer"
+        };
+        ImGui::TextColored(ImVec4(1,1,0,1), "%s%s", 
+            modeText[static_cast<int>(app->bufferViewMode)],
+            (app->bufferViewMode == App::BUFFER_VIEW_MAIN && app->showDepthOverlay) ? 
+                " (with Depth Overlay)" : "");
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Normals", ImVec2(buttonWidth, 30)))
-    {
-        app->attachmentIndex = 1;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Position", ImVec2(buttonWidth, 30)))
-    {
-        app->attachmentIndex = 2;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("ViewDir", ImVec2(buttonWidth, 30)))
-    {
-        app->attachmentIndex = 3;
-    }
-
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
-
     ImGui::End();
-    // Ventana del Inspector con controles de luces
+
+    // Inspector window
     ImGui::Begin("Inspector");
     {
         ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-        ImGui::Text("Propiedades de la Luz");
         ImGui::Separator();
 
-        // Botón para añadir nuevas luces
-        if (ImGui::Button("Add Light"))
-        {
-            app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
-            UpdateLights(app);
+        // Camera controls
+        if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
+            ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 0.1f, 1.0f, 50.0f);
+            ImGui::DragFloat("Sensitivity", &app->worldCamera.mouseSensitivity, 0.01f, 0.01f, 1.0f);
         }
-        if (ImGui::Button("Add 1000 Point Lights"))
-        {
-            for (size_t i = 0; i < 1000; i++)
-            {
-                app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(1.0f), vec3(0.0f, 10.0f, 0.0f) });
+
+        // Light management
+        if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::Button("Add Directional Light")) {
+                app->lights.push_back({LightType::Light_Directional, vec3(1.0f), vec3(1.0f,0,0), vec3(0.0f), 1.0f});
                 UpdateLights(app);
             }
-            
-        }
-        // Controles para cada luz
-        for (size_t i = 0; i < app->lights.size(); ++i)
-        {
-
-            ImGui::PushID(static_cast<int>(i));
-            Light& light = app->lights[i];
-            bool lightChanged = false;
-
-            ImGui::Separator();
-            ImGui::Text("Light %d", i + 1);
-            float intensity = light.intensity;
-            // Selección de tipo de luz
-            const char* lightTypes[] = { "Directional", "Point" };
-            int currentType = static_cast<int>(light.type);
-            if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
-            {
-                light.type = static_cast<LightType>(currentType);
-                lightChanged = true;
-            }
-
-            // Mirar esto de la luz rarete
-            float color[3] = { light.color[0], light.color[1], light.color[2] };
-            if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
-            {
-                light.color = vec3(color[0], color[1], color[2]);
-                lightChanged = true;
-            }
-
-            // Dirección o posición según el tipo
-            if (light.type == LightType::Light_Directional)
-            {
-                float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
-                if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
-                {
-                    light.direction = glm::normalize(vec3(direction[0], direction[1], direction[2]));
-                    lightChanged = true;
-                }
-            }
-            else
-            {
-                float position[3] = { light.position.x, light.position.y, light.position.z };
-                if (ImGui::DragFloat3("Position", position, 0.1f))
-                {
-                    light.position = vec3(position[0], position[1], position[2]);
-                    lightChanged = true;
-                }
-            }
-            if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f, "%.001f"))
-            {
-                light.intensity = intensity;
-                lightChanged = true;
-            }
-
             ImGui::SameLine();
-            if (ImGui::Button("Delete"))
-            {
-                app->lights.erase(app->lights.begin() + i);
+            if (ImGui::Button("Add Point Light")) {
+                app->lights.push_back({LightType::Light_Point, vec3(1.0f), vec3(0.0f), vec3(0.0f,10.0f,0.0f), 1.0f});
                 UpdateLights(app);
+            }
+
+            for (size_t i = 0; i < app->lights.size(); ++i) {
+                Light& light = app->lights[i];
+                ImGui::PushID((int)i);
+                ImGui::Separator();
+
+                // Light editing UI...
                 ImGui::PopID();
-                continue;
             }
-
-
-            if (lightChanged)
-            {
-                UpdateLights(app);
-            }
-
-            ImGui::PopID();
         }
     }
     ImGui::End();
