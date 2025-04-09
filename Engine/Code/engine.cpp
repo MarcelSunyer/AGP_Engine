@@ -314,7 +314,6 @@ void Init(App* app)
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
-    app->patrickTextureUniform = 
     //Geometry rendering loads
     app->patrickIdx = LoadModel(app, "Patrick/Pikachu.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
@@ -602,7 +601,7 @@ void CheckAndReloadShaders(App* app)
 
 void Update(App* app) {
     
-    app->primaryFBO.Resize(app->displaySize.x, app->displaySize.y);
+    //app->primaryFBO.Resize(app->displaySize.x, app->displaySize.y);
 
     CheckAndReloadShaders(app);
 
