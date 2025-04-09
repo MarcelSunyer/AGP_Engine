@@ -1,4 +1,4 @@
-//
+﻿//
 // engine.cpp : Put all your graphics stuff in this file. This is kind of the graphics module.
 // In here, you should type all your OpenGL commands, and you can also type code to handle
 // input platform events (e.g to move the camera or react to certain shortcuts), writing some
@@ -375,14 +375,34 @@ void Gui(App* app)
     ImGui::Begin("Viewport");
     {
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-        GLuint textureID = app->primaryFBO.attachments[0].second;
-        ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0,1), ImVec2(1,0));
+
+        // Determine which texture to display based on bufferViewMode
+        GLuint textureID = app->primaryFBO.attachments[0].second; // Default to main render
+        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO) {
+            textureID = app->primaryFBO.attachments[0].second; // Albedo is first attachment
+        }
+        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS) {
+            textureID = app->primaryFBO.attachments[1].second; // Normals is second attachment
+        }
+        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION) {
+            textureID = app->primaryFBO.attachments[2].second; // Position is third attachment
+        }
+        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR) {
+            textureID = app->primaryFBO.attachments[3].second; // ViewDir is fourth attachment
+        }
+        else if (app->showDepthOverlay) {
+            // When in main mode with depth overlay, we still use the main render
+            textureID = app->primaryFBO.attachments[0].second;
+        }
+
+        //Todo: Mirar esto
+        //ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
 
         // View mode buttons
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
-        const char* viewLabels[] = {"Main", "Albedo", "Normals", "Position", "ViewDir"};
+        const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" };
         for (int i = 0; i <= 4; i++) {
             bool isActive = (static_cast<int>(app->bufferViewMode) == i);
             if (isActive) {
@@ -398,7 +418,7 @@ void Gui(App* app)
             if (i < 4) ImGui::SameLine();
         }
 
-        // Depth overlay controls
+        // Depth overlay controls (only in main view)
         if (app->bufferViewMode == App::BUFFER_VIEW_MAIN) {
             ImGui::Spacing();
             if (ImGui::Checkbox("Depth Overlay", &app->showDepthOverlay)) {}
@@ -419,10 +439,10 @@ void Gui(App* app)
             "Position Buffer",
             "View Direction Buffer"
         };
-        ImGui::TextColored(ImVec4(1,1,0,1), "%s%s", 
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s%s",
             modeText[static_cast<int>(app->bufferViewMode)],
-            (app->bufferViewMode == App::BUFFER_VIEW_MAIN && app->showDepthOverlay) ? 
-                " (with Depth Overlay)" : "");
+            (app->bufferViewMode == App::BUFFER_VIEW_MAIN && app->showDepthOverlay) ?
+            " (with Depth Overlay)" : "");
     }
     ImGui::End();
 
@@ -442,26 +462,88 @@ void Gui(App* app)
         // Light management
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
-                app->lights.push_back({LightType::Light_Directional, vec3(1.0f), vec3(1.0f,0,0), vec3(0.0f), 1.0f});
+                app->lights.push_back({ LightType::Light_Directional, vec3(1.0f), vec3(1.0f,0,0), vec3(0.0f), 1.0f });
                 UpdateLights(app);
             }
             ImGui::SameLine();
             if (ImGui::Button("Add Point Light")) {
-                app->lights.push_back({LightType::Light_Point, vec3(1.0f), vec3(0.0f), vec3(0.0f,10.0f,0.0f), 1.0f});
+                app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(0.0f), vec3(0.0f,10.0f,0.0f), 1.0f });
                 UpdateLights(app);
             }
 
-            for (size_t i = 0; i < app->lights.size(); ++i) {
-                Light& light = app->lights[i];
-                ImGui::PushID((int)i);
-                ImGui::Separator();
+            // Controles para cada luz
+            for (size_t i = 0; i < app->lights.size(); ++i)
+            {
 
-                // Light editing UI...
+                ImGui::PushID(static_cast<int>(i));
+                Light& light = app->lights[i];
+                bool lightChanged = false;
+
+                ImGui::Separator();
+                ImGui::Text("Light %d", i + 1);
+                float intensity = light.intensity;
+                // Selecci�n de tipo de luz
+                const char* lightTypes[] = { "Directional", "Point" };
+                int currentType = static_cast<int>(light.type);
+                if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
+                {
+                    light.type = static_cast<LightType>(currentType);
+                    lightChanged = true;
+                }
+
+                // Mirar esto de la luz rarete
+                float color[3] = { light.color[0], light.color[1], light.color[2] };
+                if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
+                {
+                    light.color = vec3(color[0], color[1], color[2]);
+                    lightChanged = true;
+                }
+
+                // Direcci�n o posici�n seg�n el tipo
+                if (light.type == LightType::Light_Directional)
+                {
+                    float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
+                    if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
+                    {
+                        light.direction = glm::normalize(vec3(direction[0], direction[1], direction[2]));
+                        lightChanged = true;
+                    }
+                }
+                else
+                {
+                    float position[3] = { light.position.x, light.position.y, light.position.z };
+                    if (ImGui::DragFloat3("Position", position, 0.1f))
+                    {
+                        light.position = vec3(position[0], position[1], position[2]);
+                        lightChanged = true;
+                    }
+                }
+                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f, "%.001f"))
+                {
+                    light.intensity = intensity;
+                    lightChanged = true;
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button("Delete"))
+                {
+                    app->lights.erase(app->lights.begin() + i);
+                    UpdateLights(app);
+                    ImGui::PopID();
+                    continue;
+                }
+
+
+                if (lightChanged)
+                {
+                    UpdateLights(app);
+                }
+
                 ImGui::PopID();
             }
         }
+        ImGui::End();
     }
-    ImGui::End();
 }
 
 void UpdateCameraVectors(Camera* camera) {
@@ -537,7 +619,7 @@ void Update(App* app) {
 
     CheckAndReloadShaders(app);
 
-    // Rotaci�n con mouse
+    // Rotación con mouse
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESS) {
         app->worldCamera.isRotating = true;
     }
