@@ -252,7 +252,6 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     // Render quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-    // Cleanup
     glBindVertexArray(0);
     glUseProgram(0);
     for (int i = 0; i < 5; ++i) {
@@ -360,7 +359,6 @@ void Gui(App* app)
     // Setup docking space
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    // Main menu bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New Scene")) {}
@@ -370,35 +368,35 @@ void Gui(App* app)
         }
         ImGui::EndMainMenuBar();
     }
-
-    // Viewport window
     ImGui::Begin("Viewport");
     {
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
-        // Determine which texture to display based on bufferViewMode
-        GLuint textureID = app->primaryFBO.attachments[0].second; // Default to main render
-        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO) {
-            textureID = app->primaryFBO.attachments[0].second; // Albedo is first attachment
+        GLuint textureID = app->primaryFBO.attachments[0].second;
+        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO) 
+        {
+            textureID = app->primaryFBO.attachments[0].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS) {
-            textureID = app->primaryFBO.attachments[1].second; // Normals is second attachment
+        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS) 
+        {
+            textureID = app->primaryFBO.attachments[1].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION) {
-            textureID = app->primaryFBO.attachments[2].second; // Position is third attachment
+        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION) 
+        {
+            textureID = app->primaryFBO.attachments[2].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR) {
-            textureID = app->primaryFBO.attachments[3].second; // ViewDir is fourth attachment
+        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR) 
+        {
+            textureID = app->primaryFBO.attachments[3].second;
         }
         else if (app->showDepthOverlay) {
-            // When in main mode with depth overlay, we still use the main render
             textureID = app->primaryFBO.attachments[0].second;
         }
 
         //Todo: Mirar esto
         //ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
 
-        // View mode buttons
+
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
@@ -418,7 +416,6 @@ void Gui(App* app)
             if (i < 4) ImGui::SameLine();
         }
 
-        // Depth overlay controls (only in main view)
         if (app->bufferViewMode == App::BUFFER_VIEW_MAIN) {
             ImGui::Spacing();
             if (ImGui::Checkbox("Depth Overlay", &app->showDepthOverlay)) {}
@@ -431,7 +428,6 @@ void Gui(App* app)
 
         ImGui::PopStyleVar();
 
-        // Display current mode
         const char* modeText[] = {
             "Main Render",
             "Albedo Buffer",
@@ -446,20 +442,17 @@ void Gui(App* app)
     }
     ImGui::End();
 
-    // Inspector window
     ImGui::Begin("Inspector");
     {
         ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
         ImGui::Separator();
 
-        // Camera controls
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
             ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 0.1f, 1.0f, 50.0f);
             ImGui::DragFloat("Sensitivity", &app->worldCamera.mouseSensitivity, 0.01f, 0.01f, 1.0f);
         }
 
-        // Light management
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
                 app->lights.push_back({ LightType::Light_Directional, vec3(1.0f), vec3(1.0f,0,0), vec3(0.0f), 1.0f });
@@ -471,7 +464,6 @@ void Gui(App* app)
                 UpdateLights(app);
             }
 
-            // Controles para cada luz
             for (size_t i = 0; i < app->lights.size(); ++i)
             {
 
@@ -482,7 +474,6 @@ void Gui(App* app)
                 ImGui::Separator();
                 ImGui::Text("Light %d", i + 1);
                 float intensity = light.intensity;
-                // Selecci�n de tipo de luz
                 const char* lightTypes[] = { "Directional", "Point" };
                 int currentType = static_cast<int>(light.type);
                 if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
@@ -490,8 +481,14 @@ void Gui(App* app)
                     light.type = static_cast<LightType>(currentType);
                     lightChanged = true;
                 }
+                if (ImGui::Button("Add 1000 Point Lights"))
+                {
+                    for (size_t i = 0; i < 1000; i++)
+                    {
+                        app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0.0f, 10.0f, 0.0f), 1.0f });
+                    }
+                }
 
-                // Mirar esto de la luz rarete
                 float color[3] = { light.color[0], light.color[1], light.color[2] };
                 if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
                 {
@@ -499,7 +496,6 @@ void Gui(App* app)
                     lightChanged = true;
                 }
 
-                // Direcci�n o posici�n seg�n el tipo
                 if (light.type == LightType::Light_Directional)
                 {
                     float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
@@ -579,20 +575,16 @@ void CheckAndReloadShaders(App* app)
         u64 currentTimestamp = GetFileLastWriteTimestamp(program.filepath.c_str());
         if (currentTimestamp != program.lastWriteTimestamp)
         {
-            // Recreate program
             String programSource = ReadTextFile(program.filepath.c_str());
             GLuint newHandle = CreateProgramFromSource(programSource, program.programName.c_str());
 
             if (newHandle != 0)
             {
-                // Delete old program
                 glDeleteProgram(program.handle);
 
-                // Update program
                 program.handle = newHandle;
                 program.lastWriteTimestamp = currentTimestamp;
 
-                // Rebuild vertex input layout
                 program.vertexInputLayout.attributes.clear();
                 GLint attributeCount = 0;
                 glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);

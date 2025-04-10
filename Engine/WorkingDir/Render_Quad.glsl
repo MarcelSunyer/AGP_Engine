@@ -75,13 +75,21 @@ vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
 }
 
 void main() {
-    // Buffer visualization modes
+    
+
+    // Main render mode
+    vec3 baseColor = texture(uColor, vTexCoord).rgb;
+    vec3 normal = normalize(texture(uNormals, vTexCoord).rgb * 2.0 - 1.0);
+    vec3 position = texture(uPosition, vTexCoord).rgb;
+    vec3 viewDir = normalize(uCameraPosition - position);
+   
+   // Buffer visualization modes
     if (uViewMode == 1) { // Albedo
         oColor = texture(uColor, vTexCoord);
         return;
     }
     else if (uViewMode == 2) { // Normals
-        vec3 normal = texture(uNormals, vTexCoord).rgb * 2.0 - 1.0;
+        normal = texture(uNormals, vTexCoord).rgb * 2.0 - 1.0;
         oColor = vec4(normal * 0.5 + 0.5, 1.0);
         return;
     }
@@ -93,13 +101,6 @@ void main() {
         oColor = texture(uViewDir, vTexCoord);
         return;
     }
-
-    // Main render mode
-    vec3 baseColor = texture(uColor, vTexCoord).rgb;
-    vec3 normal = normalize(texture(uNormals, vTexCoord).rgb * 2.0 - 1.0);
-    vec3 position = texture(uPosition, vTexCoord).rgb;
-    vec3 viewDir = normalize(uCameraPosition - position);
-
     // Lighting calculations
     vec3 finalColor = vec3(0.0);
     for(int i = 0; i < uLightCount; ++i) {
