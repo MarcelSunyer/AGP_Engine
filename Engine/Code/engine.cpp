@@ -389,8 +389,9 @@ void Gui(App* app)
         {
             textureID = app->primaryFBO.attachments[3].second;
         }
-        else if (app->showDepthOverlay) {
-            textureID = app->primaryFBO.attachments[0].second;
+        else if (app->bufferViewMode == App::BUFFER_VIEW_DEPTH)
+        {
+            textureID = app->primaryFBO.depthHandle;
         }
 
         //Todo: Mirar esto
@@ -400,8 +401,8 @@ void Gui(App* app)
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
-        const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" };
-        for (int i = 0; i <= 4; i++) {
+        const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
+        for (int i = 0; i <= 5; i++) {
             bool isActive = (static_cast<int>(app->bufferViewMode) == i);
             if (isActive) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
@@ -416,22 +417,13 @@ void Gui(App* app)
             if (isActive) {
                 ImGui::PopStyleColor();
             }
-            if (i < 4)
+            if (i < 5)
             {
                 ImGui::SameLine();
             }
         }
 
-        if (app->bufferViewMode == App::BUFFER_VIEW_MAIN) {
-            ImGui::Spacing();
-            if (ImGui::Checkbox("Depth Overlay", &app->showDepthOverlay)) {}
-            if (app->showDepthOverlay) {
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(150);
-                ImGui::SliderFloat("##DepthIntensity", &app->depthIntensity, 0.0f, 1.0f, "Intensity: %.2f");
-            }
-        }
-
+       
         ImGui::PopStyleVar();
 
         const char* modeText[] = {
@@ -439,7 +431,8 @@ void Gui(App* app)
             "Albedo Buffer",
             "Normals Buffer",
             "Position Buffer",
-            "View Direction Buffer"
+            "View Direction Buffer",
+            "Depth Buffer"
         };
         ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s%s",
             modeText[static_cast<int>(app->bufferViewMode)],

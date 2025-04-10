@@ -101,6 +101,12 @@ void main() {
         oColor = texture(uViewDir, vTexCoord);
         return;
     }
+    else if (uViewMode == 5) { // Depth
+    float depth = texture(uDepth, vTexCoord).r;
+    float linearDepth = LinearizeDepth(depth) / uFar;
+    oColor = vec4(vec3(linearDepth), 1.0);
+    return;
+}
     // Lighting calculations
     vec3 finalColor = vec3(0.0);
     for(int i = 0; i < uLightCount; ++i) {
