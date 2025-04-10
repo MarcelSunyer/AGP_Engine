@@ -314,7 +314,7 @@ void Init(App* app)
 
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
     //Geometry rendering loads
-    app->patrickIdx = LoadModel(app, "Patrick/Pikachu.obj");
+    app->patrickIdx = LoadModel(app, "Tralelero/Tralalsa.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
 
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
@@ -469,10 +469,23 @@ void Gui(App* app)
                 app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(0.0f), vec3(0.0f,10.0f,0.0f), 1.0f });
                 UpdateLights(app);
             }
+            ImGui::SameLine();
+            if (ImGui::Button("Add 2000 Point Lights"))
+            {
+                for (size_t i = 0; i < 1000; i++)
+                {
+                    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(i, 10.0f, 0.0f), 1.0f });
 
+                }
+                for (size_t i = 0; i < 1000; i++)
+                {
+                    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0, i, 0.0f), 1.0f });
+
+                }
+                UpdateLights(app);
+            }
             for (size_t i = 0; i < app->lights.size(); ++i)
             {
-
                 ImGui::PushID(static_cast<int>(i));
                 Light& light = app->lights[i];
                 bool lightChanged = false;
@@ -486,13 +499,6 @@ void Gui(App* app)
                 {
                     light.type = static_cast<LightType>(currentType);
                     lightChanged = true;
-                }
-                if (ImGui::Button("Add 1000 Point Lights"))
-                {
-                    for (size_t i = 0; i < 1000; i++)
-                    {
-                        app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0.0f, 10.0f, 0.0f), 1.0f });
-                    }
                 }
 
                 float color[3] = { light.color[0], light.color[1], light.color[2] };
