@@ -22,7 +22,7 @@ struct Light {
     vec3 position;
 };
 
-layout(binding = 0, std140) uniform GlobalParams {
+layout(binding = 0) uniform GlobalParams {
     vec3 uCameraPosition;
     int uLightCount;
     Light uLight[16];
@@ -36,9 +36,9 @@ uniform sampler2D uPosition;
 uniform sampler2D uViewDir;
 uniform sampler2D uDepth;
 
-uniform float uNear = 0.1;
-uniform float uFar = 1000.0;
-uniform int uViewMode; // 0=main, 1=albedo, 2=normals, 3=position, 4=viewdir
+uniform float uNear = 0.01;
+uniform float uFar = 5.0;
+uniform int uViewMode; // 0=main, 1=albedo, 2=normals, 3=position, 4=viewdir, 5=depth
 uniform int uShowDepth;
 uniform float uDepthIntensity = 0.5;
 
@@ -76,14 +76,13 @@ vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
 
 void main() {
     
-
     // Main render mode
     vec3 baseColor = texture(uColor, vTexCoord).rgb;
     vec3 normal = normalize(texture(uNormals, vTexCoord).rgb * 2.0 - 1.0);
     vec3 position = texture(uPosition, vTexCoord).rgb;
     vec3 viewDir = normalize(uCameraPosition - position);
    
-   // Buffer visualization modes
+    // Buffer visualization modes
     if (uViewMode == 1) { // Albedo
         oColor = texture(uColor, vTexCoord);
         return;
@@ -101,26 +100,31 @@ void main() {
         oColor = texture(uViewDir, vTexCoord);
         return;
     }
-    else if (uViewMode == 5) { // Depth
-    float depth = texture(uDepth, vTexCoord).r;
-    float linearDepth = LinearizeDepth(depth) / uFar;
-    oColor = vec4(vec3(linearDepth), 1.0);
-    return;
-}
+    else if (uViewMode == 5) { // Depth visualization
+        float depth = texture(uDepth, vTexCoord).r;
+        float linearDepth = LinearizeDepth(depth) / uFar;
+        // Exaggerate contrast using a power function; adjust exponent as needed
+        linearDepth = pow(linearDepth,0.75);
+        oColor = vec4(vec3(linearDepth), 1.0);
+        return;
+    }
+    
     // Lighting calculations
     vec3 finalColor = vec3(0.0);
-    for(int i = 0; i < uLightCount; ++i) {
-        if(uLight[i].type == 0) {
+    for (int i = 0; i < uLightCount; ++i) {
+        if (uLight[i].type == 0) {
             finalColor += CalcDirLight(uLight[i], normal, viewDir) * baseColor;
         } else {
             finalColor += CalcPointLight(uLight[i], normal, position, viewDir) * baseColor;
         }
     }
 
-    // Apply depth visualization if enabled
+    // Apply depth visualization on top of the lighting if enabled
     if (uShowDepth == 1) {
         float depth = texture(uDepth, vTexCoord).r;
         float linearDepth = LinearizeDepth(depth) / uFar;
+        // Exaggerate contrast on depth values for a more dramatic black and white effect
+        linearDepth = pow(linearDepth, 3.0);
         finalColor = mix(finalColor, vec3(linearDepth), uDepthIntensity);
     }
 
