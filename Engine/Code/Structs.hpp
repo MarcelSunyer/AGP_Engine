@@ -335,7 +335,8 @@ struct App
         BUFFER_VIEW_ALBEDO,
         BUFFER_VIEW_NORMALS,
         BUFFER_VIEW_POSITION,
-        BUFFER_VIEW_VIEWDIR
+        BUFFER_VIEW_VIEWDIR,
+        BUFFER_VIEW_DEPTH
     };
 
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;

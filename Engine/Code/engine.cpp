@@ -629,10 +629,25 @@ void Update(App* app) {
         app->worldCamera.isRotating = false;
     }
 
+    // Middle mouse button for 2D panning
+    static bool isPanning = false;
+    if (app->input.mouseButtons[RIGHT] == BUTTON_PRESS) {
+        isPanning = true;
+    }
+    if (app->input.mouseButtons[RIGHT] == BUTTON_RELEASE) {
+        isPanning = false;
+    }
+
     if (app->worldCamera.isRotating) {
         ProcessMouseMovement(&app->worldCamera,
             app->input.mouseDelta.x,
             app->input.mouseDelta.y);
+    }
+    else if (isPanning) {
+        // Pan the camera in 2D (X and Y axes)
+        float panSpeed = 0.005f; // Adjust this value to control panning speed
+        app->worldCamera.position -= app->worldCamera.right * (app->input.mouseDelta.x * panSpeed);
+        app->worldCamera.position += app->worldCamera.up * (app->input.mouseDelta.y * panSpeed);
     }
 
     float velocity = app->worldCamera.movementSpeed * app->deltaTime;
