@@ -244,14 +244,15 @@ struct FrameBuffer
 
     void Clean()
     {
-        glDeleteFramebuffers(1, &handle);
         for (auto& texture : attachments)
         {
             glDeleteTextures(1, &texture.second);
             texture.second = 0;
         }
+        attachments.clear();
         glDeleteTextures(1, &depthHandle);
         depthHandle = 0;
+        glDeleteFramebuffers(1, &handle);
     }
     
     void Resize(uint64_t width, uint64_t height)

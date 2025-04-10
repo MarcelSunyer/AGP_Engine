@@ -408,12 +408,18 @@ void Gui(App* app)
             }
             if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
                 app->bufferViewMode = static_cast<App::BufferViewMode>(i);
-                if (i != 0) app->showDepthOverlay = false;
+                if (i != 0)
+                {
+                    app->showDepthOverlay = false;
+                }
             }
             if (isActive) {
                 ImGui::PopStyleColor();
             }
-            if (i < 4) ImGui::SameLine();
+            if (i < 4)
+            {
+                ImGui::SameLine();
+            }
         }
 
         if (app->bufferViewMode == App::BUFFER_VIEW_MAIN) {
@@ -585,6 +591,7 @@ void CheckAndReloadShaders(App* app)
                 program.handle = newHandle;
                 program.lastWriteTimestamp = currentTimestamp;
 
+
                 program.vertexInputLayout.attributes.clear();
                 GLint attributeCount = 0;
                 glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attributeCount);
@@ -606,9 +613,6 @@ void CheckAndReloadShaders(App* app)
 }
 
 void Update(App* app) {
-    
-    //app->primaryFBO.Resize(app->displaySize.x, app->displaySize.y);
-
     CheckAndReloadShaders(app);
 
     // Rotación con mouse

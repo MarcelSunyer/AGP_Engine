@@ -111,6 +111,7 @@ void OnGlfwResizeFramebuffer(GLFWwindow* window, int width, int height)
 {
     App* app = (App*)glfwGetWindowUserPointer(window);
     app->displaySize = vec2(width, height);
+    app->primaryFBO.Resize(app->displaySize.x, app->displaySize.y);
 }
 
 void OnGlfwCloseWindow(GLFWwindow* window)
