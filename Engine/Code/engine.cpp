@@ -651,11 +651,11 @@ void Update(App* app) {
     {
         app->worldCamera.position += app->worldCamera.right * velocity;
     }
-    if (app->input.keys[K_Q] == BUTTON_PRESSED)
+    if (app->input.keys[K_E] == BUTTON_PRESSED)
     {
         app->worldCamera.position += app->worldCamera.up * velocity;
     }
-    if (app->input.keys[K_E] == BUTTON_PRESSED)
+    if (app->input.keys[K_Q] == BUTTON_PRESSED)
     {
         app->worldCamera.position -= app->worldCamera.up * velocity;
     }
