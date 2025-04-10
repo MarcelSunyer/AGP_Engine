@@ -314,7 +314,7 @@ void Init(App* app)
 
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
     //Geometry rendering loads
-    app->patrickIdx = LoadModel(app, "Tralelero/Tralalsa.obj");
+    app->patrickIdx = LoadModel(app, "Thun/Thun.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
 
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
