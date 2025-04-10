@@ -170,6 +170,7 @@ struct Light
     vec3 direction;
     vec3 position;
     float intensity;
+
 };
 
 struct FrameBuffer
@@ -296,6 +297,8 @@ struct App
     //Modelo 3D cargado
     u32 patrickIdx;
     u32 patrickTextureUniform;
+
+    u32 sphereIdx;
 
     u32 whiteTexIdx;
 

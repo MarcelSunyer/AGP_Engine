@@ -31,6 +31,8 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
     app->entities.push_back(entity);
 }
 
+
+
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
     GLchar  infoLogBuffer[1024] = {};
@@ -316,6 +318,8 @@ void Init(App* app)
     //Geometry rendering loads
     app->patrickIdx = LoadModel(app, "Thun/Thun.obj");
     u32 planeIdx = LoadModel(app, "./Plane.obj");
+    app->sphereIdx = LoadModel(app, "./Sphere.obj");
+
 
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
@@ -353,7 +357,6 @@ void Init(App* app)
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
 }
 
-
 void Gui(App* app)
 {
     // Setup docking space
@@ -368,6 +371,7 @@ void Gui(App* app)
         }
         ImGui::EndMainMenuBar();
     }
+
     ImGui::Begin("Viewport");
     {
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
@@ -399,14 +403,27 @@ void Gui(App* app)
 
 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
 
         const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
+        
+        { //Posar els botons centrats
+            ImGuiStyle& style = ImGui::GetStyle();
+
+            float size = ImGui::CalcTextSize(viewLabels[0]).x + style.FramePadding.x * 2.0f;
+            float avail = ImGui::GetContentRegionAvail().x;
+
+            float off = (avail - size) * 0.4;
+
+            if (off > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+        }
         for (int i = 0; i <= 5; i++) {
             bool isActive = (static_cast<int>(app->bufferViewMode) == i);
             if (isActive) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
             }
+           
+            
             if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
                 app->bufferViewMode = static_cast<App::BufferViewMode>(i);
                 if (i != 0)
@@ -421,26 +438,12 @@ void Gui(App* app)
             {
                 ImGui::SameLine();
             }
-        }
-
-       
+        }       
         ImGui::PopStyleVar();
-
-        const char* modeText[] = {
-            "Main Render",
-            "Albedo Buffer",
-            "Normals Buffer",
-            "Position Buffer",
-            "View Direction Buffer",
-            "Depth Buffer"
-        };
-        ImGui::TextColored(ImVec4(1, 1, 0, 1), "%s%s",
-            modeText[static_cast<int>(app->bufferViewMode)],
-            (app->bufferViewMode == App::BUFFER_VIEW_MAIN && app->showDepthOverlay) ?
-            " (with Depth Overlay)" : "");
     }
     ImGui::End();
 
+    ImGui::End();
     ImGui::Begin("Inspector");
     {
         ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
