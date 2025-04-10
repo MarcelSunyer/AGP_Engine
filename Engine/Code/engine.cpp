@@ -30,7 +30,19 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
 
     app->entities.push_back(entity);
 }
+void CreateLight(App* app, LightType light, vec3 color, vec3 position, float intensity )
+{
+    if (light == LightType::Light_Directional)
+    {
+        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity});
+    }
+    else
+    {
+        app->lights.push_back({ light, color, vec3(0), position, intensity});
 
+    }
+    
+}
 
 
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
@@ -337,7 +349,7 @@ void Init(App* app)
     app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Directional, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0.0f, 10.0f, 0.0f), 1.0f });
+    CreateLight(app, LightType::Light_Directional, vec3(1),vec3(0), 1.f);
     
     UpdateLights(app);
 
@@ -457,12 +469,12 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
-                app->lights.push_back({ LightType::Light_Directional, vec3(1.0f), vec3(1.0f,0,0), vec3(0.0f), 1.0f });
+                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(0), 1.f);
                 UpdateLights(app);
             }
             ImGui::SameLine();
             if (ImGui::Button("Add Point Light")) {
-                app->lights.push_back({ LightType::Light_Point, vec3(1.0f), vec3(0.0f), vec3(0.0f,10.0f,0.0f), 1.0f });
+                CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
                 UpdateLights(app);
             }
             ImGui::SameLine();
@@ -470,12 +482,12 @@ void Gui(App* app)
             {
                 for (size_t i = 0; i < 1000; i++)
                 {
-                    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(i, 10.0f, 0.0f), 1.0f });
+                    CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
 
                 }
                 for (size_t i = 0; i < 1000; i++)
                 {
-                    app->lights.push_back({ LightType::Light_Point, vec3(1.0f, 1.f, 1.f), vec3(1.0f,0,0), vec3(0, i, 0.0f), 1.0f });
+                    CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
 
                 }
                 UpdateLights(app);
