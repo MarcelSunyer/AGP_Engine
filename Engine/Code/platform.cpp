@@ -112,6 +112,12 @@ void OnGlfwResizeFramebuffer(GLFWwindow* window, int width, int height)
     App* app = (App*)glfwGetWindowUserPointer(window);
     app->displaySize = vec2(width, height);
     app->primaryFBO.Resize(width, height);
+    
+    float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+    float _near = 0.1f;
+    float _far = 1000.0f;
+    app->worldCamera.projectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, _near, _far);
+
 }
 
 void OnGlfwCloseWindow(GLFWwindow* window)

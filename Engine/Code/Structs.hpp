@@ -244,7 +244,7 @@ struct FrameBuffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void Clean()
+    void Clear()
     {
         for (auto& texture : attachments)
         {
@@ -263,15 +263,14 @@ struct FrameBuffer
         if (width == _width && height == _height || height == 0 || width == 0)
             return;
 
-        Clean();
+        Clear();
         CreateFBO(4, width, height);
+
     }
 };
 
 struct App
 {
-
-    //Todo: Posar variables en un constructor
     // Loop
     f32  deltaTime;
     bool isRunning;
@@ -348,6 +347,8 @@ struct App
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     bool showDepthOverlay = false;
     float depthIntensity = 0.5f;
+
+
 };
 
 #endif // !STRUCTS

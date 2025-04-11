@@ -286,7 +286,7 @@ void SetUpCamera(App* app)
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.yaw = -90.0f;
     app->worldCamera.pitch = 0.0f;
-    app->worldCamera.movementSpeed = 10.0f;
+    app->worldCamera.movementSpeed = 40.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
     UpdateCameraVectors(&app->worldCamera);
@@ -485,7 +485,7 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
-            ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 0.1f, 1.0f, 50.0f);
+            ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 0.1f, 1.0f, 100.0f);
             ImGui::DragFloat("Sensitivity", &app->worldCamera.mouseSensitivity, 0.01f, 0.01f, 1.0f);
         }
 
@@ -867,7 +867,7 @@ void CleanUp(App* app)
         app->embeddedElements = 0;
     }
 
-    app->primaryFBO.Clean();
+    app->primaryFBO.Clear();
 }
 
 GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
