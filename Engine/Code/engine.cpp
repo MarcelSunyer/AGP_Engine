@@ -16,6 +16,7 @@
 
 void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition)
 {
+   
     Entity entity;
     AlignHead(app->entityUBO, app->uniformBlockAlignment);
     entity.entityBufferOffset = app->entityUBO.head;
@@ -30,18 +31,23 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
 
     app->entities.push_back(entity);
 }
-void CreateLight(App* app, LightType light, vec3 color, vec3 position, float intensity )
+void CreateLight(App* app, LightType light, vec3 color, vec3 position, float intensity)
 {
+    glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
+
     if (light == LightType::Light_Directional)
     {
-        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity});
+        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity });
     }
     else
     {
-        app->lights.push_back({ light, color, vec3(0), position, intensity});
+        vec3 spherePosition = position;
+        glm::mat4 sphereWorld = glm::translate(spherePosition);
 
+        CreateEntity(app, app->sphereIdx, VP, sphereWorld);
+
+        app->lights.push_back({ light, color, vec3(0), position, intensity, static_cast<int>(app->entities.size() - 1) });
     }
-    
 }
 
 
@@ -278,7 +284,7 @@ void SetUpCamera(App* app)
 {
     app->worldCamera.position = glm::vec3(10, 15, 50);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    app->worldCamera.yaw = -90.0f;  // Apunta hacia -Z
+    app->worldCamera.yaw = -90.0f;
     app->worldCamera.pitch = 0.0f;
     app->worldCamera.movementSpeed = 10.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
@@ -315,26 +321,39 @@ void InitMeshBuffers(App* app)
     glBindVertexArray(0);
 }
 
+void ExtensionsOpenGL(App* app)
+{
+    GLint numExtensions = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+    app->glExtensions.reserve(numExtensions);
+    for (GLint i = 0; i < numExtensions; ++i)
+    {
+        const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
+        app->glExtensions.emplace_back(extension);
+    }
+}
+
 void Init(App* app)
 {
+    ExtensionsOpenGL(app);
+
     SetUpCamera(app);
 
     InitMeshBuffers(app);
 
-    //Program Init
     app->texturedGeometryProgramIdx = LoadProgram(app, "Render_Quad.glsl", "Render_Quad");
 
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
-    //Geometry rendering loads
+
     app->patrickIdx = LoadModel(app, "Thun/Thun.obj");
     
     u32 planeIdx = LoadModel(app, "./Plane.obj");
     
     app->sphereIdx = LoadModel(app, "./Sphere.obj");
-
-
+   
+    u32 test_1 = LoadModel(app, "./Entity_test.obj");
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
@@ -359,6 +378,8 @@ void Init(App* app)
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
+    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)));
+    
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
 
     CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(6, 0, 5)));
@@ -373,7 +394,6 @@ void Init(App* app)
 
 void Gui(App* app)
 {
-    // Setup docking space
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
     if (ImGui::BeginMainMenuBar()) {
@@ -412,7 +432,7 @@ void Gui(App* app)
             textureID = app->primaryFBO.depthHandle;
         }
 
-        //Todo: Mirar esto
+        //Todo: Poner ventana aparte
         //ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
 
 
@@ -420,7 +440,7 @@ void Gui(App* app)
 
         const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
         
-        { //Posar els botons centrats
+        {
             ImGuiStyle& style = ImGui::GetStyle();
 
             float size = ImGui::CalcTextSize(viewLabels[0]).x + style.FramePadding.x * 2.0f;
@@ -533,6 +553,7 @@ void Gui(App* app)
                     if (ImGui::DragFloat3("Position", position, 0.1f))
                     {
                         light.position = vec3(position[0], position[1], position[2]);
+
                         lightChanged = true;
                     }
                 }
@@ -545,6 +566,17 @@ void Gui(App* app)
                 ImGui::SameLine();
                 if (ImGui::Button("Delete"))
                 {
+                    // Eliminar la entidad asociada si es una luz puntual
+                    if (light.type == LightType::Light_Point && light.entityIndex != -1)
+                    {
+                        app->entities.erase(app->entities.begin() + light.entityIndex);
+                        // Ajustar índices de las luces posteriores
+                        for (auto& otherLight : app->lights)
+                        {
+                            if (otherLight.entityIndex > light.entityIndex)
+                                otherLight.entityIndex--;
+                        }
+                    }
                     app->lights.erase(app->lights.begin() + i);
                     UpdateLights(app);
                     ImGui::PopID();
@@ -560,7 +592,16 @@ void Gui(App* app)
                 ImGui::PopID();
             }
         }
+        ImGui::Separator();
+
+        ImGui::Begin("OpenGl Info");
+        ImGui::Text("Extensions");
+        for (const auto& ext: app->glExtensions)
+        {
+            ImGui::Text("%s", ext.c_str());
+        }
         ImGui::End();
+
     }
 }
 
@@ -631,7 +672,6 @@ void CheckAndReloadShaders(App* app)
 void Update(App* app) {
     CheckAndReloadShaders(app);
 
-    // Rotación con mouse
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESS) {
         app->worldCamera.isRotating = true;
     }
@@ -639,7 +679,6 @@ void Update(App* app) {
         app->worldCamera.isRotating = false;
     }
 
-    // Middle mouse button for 2D panning
     static bool isPanning = false;
     if (app->input.mouseButtons[RIGHT] == BUTTON_PRESS) {
         isPanning = true;
@@ -654,8 +693,7 @@ void Update(App* app) {
             app->input.mouseDelta.y);
     }
     else if (isPanning) {
-        // Pan the camera in 2D (X and Y axes)
-        float panSpeed = 0.005f; // Adjust this value to control panning speed
+        float panSpeed = 0.005f;
         app->worldCamera.position -= app->worldCamera.right * (app->input.mouseDelta.x * panSpeed);
         app->worldCamera.position += app->worldCamera.up * (app->input.mouseDelta.y * panSpeed);
     }
@@ -687,14 +725,8 @@ void Update(App* app) {
         app->worldCamera.position -= app->worldCamera.up * velocity;
     }
 
-    // Actualizar matrices
-    app->worldCamera.viewMatrix = glm::lookAt(
-        app->worldCamera.position,
-        app->worldCamera.position + app->worldCamera.front,
-        app->worldCamera.up
-    );
+    app->worldCamera.viewMatrix = glm::lookAt(app->worldCamera.position, app->worldCamera.position + app->worldCamera.front, app->worldCamera.up);
 
-    // Actualizar UBOs
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     MapBuffer(app->entityUBO, GL_WRITE_ONLY);
@@ -716,6 +748,16 @@ void UpdateLights(App* app)
     {
         AlignHead(app->globalUBO, sizeof(vec4));
         Light& light = app->lights[i];
+        if (light.type == LightType::Light_Point && light.entityIndex != -1)
+        {
+            if (light.entityIndex < app->entities.size())
+            {
+                Entity& sphereEntity = app->entities[light.entityIndex];
+                glm::vec3 modelOffset = vec3(2.f, .0f, 2.f); 
+                glm::mat4 correction = glm::translate(glm::mat4(1.0f), modelOffset);
+                sphereEntity.worldMatrix = glm::translate(glm::mat4(1.0f), light.position) * correction;
+            }
+        }
         PushUInt(app->globalUBO, static_cast<int>(light.type));
         PushVec3(app->globalUBO, light.color * light.intensity);
         PushVec3(app->globalUBO, light.direction);

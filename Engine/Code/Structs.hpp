@@ -170,6 +170,7 @@ struct Light
     vec3 direction;
     vec3 position;
     float intensity;
+    int entityIndex;
 
 };
 
@@ -328,6 +329,7 @@ struct App
     Buffer localParamsUBO;
 
     std::vector<Entity> entities;
+    std::vector<Entity> spheres;
     std::vector<Light> lights;
 
     FrameBuffer primaryFBO;
