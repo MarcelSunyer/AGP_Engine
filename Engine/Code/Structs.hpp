@@ -258,7 +258,8 @@ struct FrameBuffer
     
     void Resize(uint64_t width, uint64_t height)
     {
-        if (width == _width && height == _height)
+        //Igualam a 0 pa que no peti al minimitzar
+        if (width == _width && height == _height || height == 0 || width == 0)
             return;
 
         Clean();
