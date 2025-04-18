@@ -383,6 +383,7 @@ void Init(App* app)
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
 
     CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(6, 0, 5)));
+    CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(0, 0, 0)));
 
     UnmapBuffer(entityUBO);
 
@@ -729,20 +730,7 @@ void Update(App* app) {
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     MapBuffer(app->entityUBO, GL_WRITE_ONLY);
-    static float animationTime = 0.0f;
-    animationTime += app->deltaTime;
-
     for (auto& entity : app->entities) {
-        if (entity.modelIndex == app->patrickIdx) {
-            // Floating animation
-            float yPos = sin(animationTime) * 2.0f;
-            // Spinning animation
-            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), animationTime, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, 0.0f));
-            entity.worldMatrix = translation * rotation;
-        }
-
-        // Update VP matrix for all entities
         size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
         glm::mat4 newVPMatrix = VP * entity.worldMatrix;
         memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
