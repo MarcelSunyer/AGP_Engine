@@ -22,10 +22,10 @@ struct Light {
     vec3 position;
 };
 
-layout(binding = 0) uniform GlobalParams {
+layout(binding = 0, std140) uniform GlobalParams {
     vec3 uCameraPosition;
     int uLightCount;
-    Light uLight[16];
+    Light uLight[];
 };
 
 in vec2 vTexCoord;
@@ -51,17 +51,23 @@ float LinearizeDepth(float depth) {
 
 vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
     vec3 lightDir = normalize(light.position - position);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 2.0); // Note the exponent change to 2.0
+
     float distance = length(light.position - position);
     float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
     
-    vec3 ambient = light.color * 0.1;
-    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 ambient = light.color * 0.2; // Increased ambient from 0.1 to 0.2
     vec3 diffuse = light.color * diff;
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = light.color * spec * 0.05;
+    vec3 specular = 0.1 * spec * light.color; // Adjusted specular strength from 0.05 to 0.1
     
-    return (ambient + diffuse + specular) * attenuation;
+    // Apply attenuation to each component individually
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+    
+    return (ambient + diffuse + specular);
 }
 
 vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
