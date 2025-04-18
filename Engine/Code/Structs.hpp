@@ -170,9 +170,9 @@ struct Light
     vec3 direction;
     vec3 position;
     float intensity;
+    int entityIndex;
+
 };
-
-
 
 struct FrameBuffer
 {
@@ -299,7 +299,9 @@ struct App
     u32 patrickIdx;
     u32 patrickTextureUniform;
 
-    //u32 sphereIdx;
+    u32 sphereIdx;
+
+    u32 whiteTexIdx;
 
     // Mode
     Mode mode;
@@ -346,7 +348,7 @@ struct App
     bool showDepthOverlay = false;
     float depthIntensity = 0.5f;
 
-    u32 maxLights;
+
 };
 
 #endif // !STRUCTS
