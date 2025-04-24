@@ -347,8 +347,6 @@ struct App
     float depthIntensity = 0.5f;
 
     u32 maxLights;
-
-    GPUType gpuType = GPUType::GPU_UNKNOWN;
 };
 
 #endif // !STRUCTS
