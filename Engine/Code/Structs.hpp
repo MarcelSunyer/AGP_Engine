@@ -296,7 +296,7 @@ struct App
     u32 geometryProgramIdx;
 
     //Modelo 3D cargado
-    u32 pikachu;
+    u32 patrickIdx;
     u32 patrickTextureUniform;
 
     //u32 sphereIdx;
