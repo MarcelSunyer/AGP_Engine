@@ -790,19 +790,21 @@ void Update(App* app) {
 
     for (auto& entity : app->entities) {
         if (entity.modelIndex == app->pikachu) {
-            // Floating animation
-            float yPos = sin(animationTime) * 2.0f;
-            // Spinning animation
-            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), animationTime, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, 0.0f));
-            entity.worldMatrix = translation * rotation;
+            float yPos = sin(animationTime) * 7.5f;
+
+            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
+            entity.worldMatrix = translation;
+            glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
+            size_t normalMatrixOffset = entity.entityBufferOffset + 2 * sizeof(glm::mat4);
+            memcpy((char*)app->entityUBO.data + normalMatrixOffset, &normalMatrix, sizeof(glm::mat4));
         }
 
-        // Update VP matrix for all entities
         size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
         glm::mat4 newVPMatrix = VP * entity.worldMatrix;
         memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
+
     }
+
     UnmapBuffer(app->entityUBO);
 }
 
