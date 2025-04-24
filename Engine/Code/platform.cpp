@@ -4,14 +4,6 @@
 // it needs in order to create the application (e.g. window, graphics context, I/O, allocators, etc).
 //
 
-extern "C" {
-    // NVIDIA: 0 = Integrated, 1 = Dedicated
-    __declspec(dllexport) unsigned long NvOptimusEnablement = 1;
-
-    // AMD: 0 = Integrated, 1 = Dedicated
-    __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
-}
-
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
@@ -43,31 +35,6 @@ extern "C" {
 #define GLOBAL_FRAME_ARENA_SIZE MB(16)
 u8* GlobalFrameArenaMemory = NULL;
 u32 GlobalFrameArenaHead = 0;
-
-GPUType DetectGPUType() {
-    const char* vendor = (const char*)glGetString(GL_VENDOR);
-    const char* renderer = (const char*)glGetString(GL_RENDERER);
-
-    if (vendor && renderer) {
-        std::string vendorStr = vendor;
-        std::string rendererStr = renderer;
-
-        // Check for Intel Integrated Graphics
-        if (vendorStr.find("Intel") != std::string::npos ||
-            rendererStr.find("Intel") != std::string::npos ||
-            rendererStr.find("UHD Graphics") != std::string::npos) {
-            return GPUType::GPU_INTEGRATED;
-        }
-        // Check for NVIDIA/AMD Dedicated GPUs
-        else if (vendorStr.find("NVIDIA") != std::string::npos ||
-            vendorStr.find("AMD") != std::string::npos ||
-            rendererStr.find("RTX") != std::string::npos ||
-            rendererStr.find("Radeon") != std::string::npos) {
-            return GPUType::GPU_DEDICATED;
-        }
-    }
-    return GPUType::GPU_UNKNOWN;
-}
 
 void OnGlfwError(int errorCode, const char *errorMessage)
 {
@@ -247,43 +214,6 @@ int main()
 
     //Informacion de OpenGl
     
-    app.gpuType = DetectGPUType();
-
-    // Log GPU information
-    const char* glVendor = (const char*)glGetString(GL_VENDOR);
-    const char* glRenderer = (const char*)glGetString(GL_RENDERER);
-    const char* vendor = (const char*)glGetString(GL_VENDOR);
-    const char* renderer = (const char*)glGetString(GL_RENDERER);
-
-    // 2. Verify activation
-    if (strstr(vendor, "Intel")) {
-        ELOG("ERROR: Dedicated GPU not activated!");
-        ELOG("Vendor: %s", vendor);
-        ELOG("Renderer: %s", renderer);
-        ELOG("Possible fixes:");
-        ELOG("1. Update graphics drivers");
-        ELOG("2. Set GPU preference in NVIDIA/AMD control panel");
-        ELOG("3. Disable integrated GPU in BIOS");
-    }
-    else {
-        ILOG("Dedicated GPU active: %s %s", vendor, renderer);
-    }
-
-    // Handle GPU type
-    switch (app.gpuType) {
-    case GPUType::GPU_INTEGRATED:
-        ILOG("Using Integrated GPU");
-        // Optional: Reduce graphics settings
-        break;
-    case GPUType::GPU_DEDICATED:
-        ILOG("Using Dedicated GPU");
-        // Optional: Enable advanced features
-        break;
-    default:
-        ELOG("Unknown GPU type");
-        break;
-    }
-
     Init(&app);
 
     while (app.isRunning)

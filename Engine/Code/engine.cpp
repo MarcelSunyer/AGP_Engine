@@ -399,7 +399,7 @@ void Init(App* app)
 
     const u32 fixedUBOSize = sizeof(glm::vec3) + sizeof(int); 
 
-    app->maxLights = 60000;
+    app->maxLights = (app->maxUniformBufferSize - fixedUBOSize) / sizePerLight;
   
     u32 globalUBOSize = fixedUBOSize + (app->maxLights * sizePerLight);
     app->globalUBO = CreateBuffer(globalUBOSize, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
@@ -523,27 +523,11 @@ void Gui(App* app)
     ImGui::End();
     ImGui::Begin("Inspector");
     {
-        ImGui::Begin("System Info");
-        {
+        if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-            
-            ImGui::Separator();
-
-            ImGui::Text("GPU Vendor: %s", (const char*)glGetString(GL_VENDOR));
-            ImGui::Text("GPU Model: %s", (const char*)glGetString(GL_RENDERER));
-
-            if (app->gpuType == GPUType::GPU_INTEGRATED) {
-                ImGui::TextColored(ImVec4(1, 0.5, 0, 1), "[Integrated GPU]");
-                ImGui::TextWrapped("Performance may be limited. Switch to dedicated GPU via:");
-                ImGui::BulletText("NVIDIA Control Panel → Manage 3D Settings");
-                ImGui::BulletText("AMD Radeon Settings → Graphics");
-            }
-            else if (app->gpuType == GPUType::GPU_DEDICATED) {
-                ImGui::TextColored(ImVec4(0, 1, 0, 1), "[Dedicated GPU]");
-            }
+            ImGui::Text("Lights that can be suppoorted by the PC: %u", app->maxLights);
+            ImGui::Text("UBO Size: %d bytes", app->maxUniformBufferSize);
         }
-        ImGui::End();
-      
         ImGui::Separator();
 
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -839,6 +823,12 @@ void UpdateLights(App* app) {
         PushVec3(app->globalUBO, light.direction);
         PushVec3(app->globalUBO, light.position);
         AlignHead(app->globalUBO, app->uniformBlockAlignment);
+    }
+
+    // Warning si supera el límit
+    if (app->lights.size() > app->maxLights) {
+        ELOG("[WARNING] Llums activas: %d/%d",
+            app->maxLights, app->lights.size());
     }
 
     UnmapBuffer(app->globalUBO);
