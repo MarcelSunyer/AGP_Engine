@@ -22,8 +22,9 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
 
     entity.worldMatrix = aPosition;
     entity.modelIndex = aModelIndx;
-
+    glm::mat4 normalMatrix = glm::transpose(glm::inverse(aPosition)); 
     PushMat4(app->entityUBO, entity.worldMatrix);
+    PushMat4(app->entityUBO, normalMatrix);        
     PushMat4(app->entityUBO, aVP * entity.worldMatrix);
 
     entity.entityBufferSize = app->entityUBO.size - entity.entityBufferOffset;
@@ -282,10 +283,10 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 }
 void SetUpCamera(App* app)
 {
-    app->worldCamera.position = glm::vec3(10, 15, 50);
+    app->worldCamera.position = glm::vec3(10, 90, 120);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.yaw = -90.0f;
-    app->worldCamera.pitch = 0.0f;
+    app->worldCamera.pitch = -30.0f;
     app->worldCamera.movementSpeed = 40.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
@@ -333,6 +334,18 @@ void ExtensionsOpenGL(App* app)
     }
 }
 
+void TestParaMiquel(App* app)
+{
+    for (int x = -15; x < 15; ++x)
+    {
+        for (int z = -15; z < 15; ++z)
+        {
+            glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 15, 0.0f, z * 15), 2);
+        }
+    }
+}
+
 void Init(App* app)
 {
     ExtensionsOpenGL(app);
@@ -345,16 +358,27 @@ void Init(App* app)
 
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
-    app->patrickIdx = LoadModel(app, "Pikachu/Pikachu.obj");
+    app->pikachu = LoadModel(app, "Pikachu/Pikachu.obj");
     
     u32 planeIdx = LoadModel(app, "Plane/Plane.obj");
     
+    u32 cone = LoadModel(app, "Cone/Cone.obj");
+
+    u32 torus = LoadModel(app, "Torus/Torus.obj");
+
     u32 skyBox = LoadModel(app, "SkyBox/SkyBox.obj");
 
+    u32 sphere = LoadModel(app, "Sphere/Sphere.obj");
+
+    u32 cube = LoadModel(app, "Cube/Cube.obj");
+
+    u32 monkey = LoadModel(app, "Monkey/Monkey.obj");
+
     //Comentat ja que no me crea mes d'una esfera jiji
-    //app->sphereIdx = LoadModel(app, "./Sphere.obj");
+    //app->sphereIdx = LoadModel(app, "Sphere/Sphere_Light.obj");
    
-    u32 test_1 = LoadModel(app, "./Entity_test.obj");
+    u32 test_1 = LoadModel(app, "Test/Entity_test.obj");
+    
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
@@ -368,43 +392,44 @@ void Init(App* app)
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
-    // Calcular mida per llum segons std140
+   
     const u32 sizePerLight =
-        sizeof(int) +   // type
-        3 * sizeof(float) + // color (12 bytes) 
-        3 * sizeof(float) + // direction (12 bytes)
-        3 * sizeof(float) + // position (12 bytes)
-        sizeof(float) +   // intensity
-        4; // padding total (12*3 + 4 = 40 -> padding fins a 64 bytes)
+        sizeof(int) + 3 * sizeof(float) + 3 * sizeof(float) +  3 * sizeof(float) + sizeof(float) + 4;
 
-    // Calcular espai disponible
-    const u32 fixedUBOSize =
-        sizeof(glm::vec3) + // cameraPos (16 bytes)
-        sizeof(int);         // lightCount (4 bytes + 12 padding)
+
+    const u32 fixedUBOSize = sizeof(glm::vec3) + sizeof(int); 
 
     app->maxLights = (app->maxUniformBufferSize - fixedUBOSize) / sizePerLight;
-
-    // Verificar mínim 1 llum
-    app->maxLights = glm::max(app->maxLights, 1u);
-
-    
-
+  
     u32 globalUBOSize = fixedUBOSize + (app->maxLights * sizePerLight);
     app->globalUBO = CreateBuffer(globalUBOSize, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    app->lights.push_back({ LightType::Light_Directional, vec3(1), vec3(1,0,0), vec3(0), 1.5f });
+    //TestParaMiquel(app);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0) ,1.5);
+    CreateLight(app, LightType::Light_Point, vec3(0, 1, 0), vec3(-12, 1, -15), 40);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)));
+   
+    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)));
     
+    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)));
+
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)));
+
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)));
+
+    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)));
+
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
+    
     CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>());
 
-    CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(6, 0, 5)));
+    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)));
 
     UnmapBuffer(entityUBO);
 
@@ -525,16 +550,41 @@ void Gui(App* app)
                 CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
                 UpdateLights(app);
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Add 2000 Point Lights"))
+
+            if (ImGui::Button("Add 400 Point Lights"))
             {
-                for (int i = 0; i < 1000; ++i) {
-                    CreateLight(app, LightType::Light_Point,
-                        glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f),
-                        glm::vec3(i * 2, 0, 0), 1.0f);
+                for (int x = -10; x < 10; ++x)
+                {
+                    for (int z = -10; z < 10; ++z)
+                    {
+                        glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 20, 0.0f, z * 20), 2);
+                    }
                 }
+                CreateLight(app, LightType::Light_Point, vec3(1), glm::vec3(20 * 20, 0.0f, 20 * 20), 2);
                 UpdateLights(app);
+            }    
+
+            ImGui::SameLine();
+            if (ImGui::Button("Delete Last 400 lights"))
+            {
+                if (!app->lights.empty()) {
+                    
+                    size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
+
+                    app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
+
+                    UpdateLights(app);
+                }
             }
+
+            u32 sceneLights;
+            for (size_t i = 0; i < app->lights.size(); i++)
+            {
+                sceneLights = i;
+            }
+
+            ImGui::Text("Lights in scene:  %d", sceneLights);
             for (size_t i = 0; i < app->lights.size(); ++i)
             {
                 ImGui::PushID(static_cast<int>(i));
@@ -578,7 +628,7 @@ void Gui(App* app)
                         lightChanged = true;
                     }
                 }
-                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f, "%.001f"))
+                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 100.0f, "%.001f"))
                 {
                     light.intensity = intensity;
                     lightChanged = true;
@@ -614,6 +664,7 @@ void Gui(App* app)
 
     }
 }
+
 
 void UpdateCameraVectors(Camera* camera) {
     
@@ -657,7 +708,6 @@ void CheckAndReloadShaders(App* app)
 
                 program.handle = newHandle;
                 program.lastWriteTimestamp = currentTimestamp;
-
 
                 program.vertexInputLayout.attributes.clear();
                 GLint attributeCount = 0;
@@ -745,19 +795,22 @@ void Update(App* app) {
     animationTime += app->deltaTime;
 
     for (auto& entity : app->entities) {
-        if (entity.modelIndex == app->patrickIdx) {
+        if (entity.modelIndex == app->pikachu) {
             // Floating animation
-            float yPos = sin(animationTime) * 2.0f;
-            // Spinning animation
-            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), animationTime, glm::vec3(0.0f, 1.0f, 0.0f));
-            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, 0.0f));
-            entity.worldMatrix = translation * rotation;
+            float yPos = sin(animationTime) * 7.5f;
+
+            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
+            entity.worldMatrix = translation;
+            glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
+            size_t normalMatrixOffset = entity.entityBufferOffset + 2 * sizeof(glm::mat4); 
+            memcpy((char*)app->entityUBO.data + normalMatrixOffset, &normalMatrix, sizeof(glm::mat4));
         }
 
         // Update VP matrix for all entities
         size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
         glm::mat4 newVPMatrix = VP * entity.worldMatrix;
         memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
+
     }
     UnmapBuffer(app->entityUBO);
 }
@@ -765,11 +818,9 @@ void Update(App* app) {
 void UpdateLights(App* app) {
     MapBuffer(app->globalUBO, GL_WRITE_ONLY);
 
-    // Capsalera
     PushVec3(app->globalUBO, app->worldCamera.position);
     PushUInt(app->globalUBO, glm::min((u32)app->lights.size(), app->maxLights));
 
-    // Processar fins al límit real
     u32 numLights = glm::min((u32)app->lights.size(), app->maxLights);
     for (u32 i = 0; i < numLights; ++i) {
         Light& light = app->lights[i];
@@ -781,7 +832,7 @@ void UpdateLights(App* app) {
         AlignHead(app->globalUBO, app->uniformBlockAlignment);
     }
 
-    // Warning si superem el límit
+    // Warning si supera el límit
     if (app->lights.size() > app->maxLights) {
         ELOG("[WARNING] Llums activas: %d/%d",
             app->maxLights, app->lights.size());
