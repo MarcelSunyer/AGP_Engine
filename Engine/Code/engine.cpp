@@ -405,7 +405,7 @@ void Init(App* app)
     app->globalUBO = CreateBuffer(globalUBOSize, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
     
-    //TestParaMiquel(app);  //Crea 1000 llums a l'escena
+    //TestParaMiquel(app);
     CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0) ,1.5);
     CreateLight(app, LightType::Light_Point, vec3(0, 1, 0), vec3(-12, 1, -15), 40);
 
@@ -478,6 +478,10 @@ void Gui(App* app)
         {
             textureID = app->primaryFBO.depthHandle;
         }
+
+        //Todo: Poner ventana aparte
+        //ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
+
 
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
 
@@ -554,9 +558,10 @@ void Gui(App* app)
                     for (int z = -10; z < 10; ++z)
                     {
                         glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10);
+                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 20, 0.0f, z * 20), 2);
                     }
                 }
+                CreateLight(app, LightType::Light_Point, vec3(1), glm::vec3(20 * 20, 0.0f, 20 * 20), 2);
                 UpdateLights(app);
             }    
 
@@ -791,6 +796,7 @@ void Update(App* app) {
 
     for (auto& entity : app->entities) {
         if (entity.modelIndex == app->pikachu) {
+            // Floating animation
             float yPos = sin(animationTime) * 7.5f;
 
             glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
@@ -800,6 +806,7 @@ void Update(App* app) {
             memcpy((char*)app->entityUBO.data + normalMatrixOffset, &normalMatrix, sizeof(glm::mat4));
         }
 
+        // Update VP matrix for all entities
         size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
         glm::mat4 newVPMatrix = VP * entity.worldMatrix;
         memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
