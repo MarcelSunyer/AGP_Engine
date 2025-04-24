@@ -170,20 +170,20 @@ struct Light
     vec3 direction;
     vec3 position;
     float intensity;
-    int entityIndex;
-
 };
+
+
 
 struct FrameBuffer
 {
     u32 handle;
     vec2 bufferSize;
-    std::vector<std::pair<GLenum,GLuint>> attachments;
+    std::vector<std::pair<GLenum, GLuint>> attachments;
     GLuint depthHandle;
 
     uint64_t _width;
     uint64_t _height;
-    
+
     bool CreateFBO(const uint64_t aAttachments, const uint64_t aWidth, const uint64_t aHeight)
     {
         _width = aWidth;
@@ -256,7 +256,7 @@ struct FrameBuffer
         depthHandle = 0;
         glDeleteFramebuffers(1, &handle);
     }
-    
+
     void Resize(uint64_t width, uint64_t height)
     {
         //Igualam a 0 pa que no peti al minimitzar
@@ -296,12 +296,10 @@ struct App
     u32 geometryProgramIdx;
 
     //Modelo 3D cargado
-    u32 patrickIdx;
+    u32 pikachu;
     u32 patrickTextureUniform;
 
-    u32 sphereIdx;
-
-    u32 whiteTexIdx;
+    //u32 sphereIdx;
 
     // Mode
     Mode mode;
@@ -348,7 +346,7 @@ struct App
     bool showDepthOverlay = false;
     float depthIntensity = 0.5f;
 
-
+    u32 maxLights;
 };
 
 #endif // !STRUCTS

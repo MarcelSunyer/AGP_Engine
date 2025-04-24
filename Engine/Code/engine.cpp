@@ -16,15 +16,15 @@
 
 void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition)
 {
-   
     Entity entity;
     AlignHead(app->entityUBO, app->uniformBlockAlignment);
     entity.entityBufferOffset = app->entityUBO.head;
 
     entity.worldMatrix = aPosition;
     entity.modelIndex = aModelIndx;
-
+    glm::mat4 normalMatrix = glm::transpose(glm::inverse(aPosition));
     PushMat4(app->entityUBO, entity.worldMatrix);
+    PushMat4(app->entityUBO, normalMatrix);
     PushMat4(app->entityUBO, aVP * entity.worldMatrix);
 
     entity.entityBufferSize = app->entityUBO.size - entity.entityBufferOffset;
@@ -44,9 +44,10 @@ void CreateLight(App* app, LightType light, vec3 color, vec3 position, float int
         vec3 spherePosition = position;
         glm::mat4 sphereWorld = glm::translate(spherePosition);
 
-        CreateEntity(app, app->sphereIdx, VP, sphereWorld);
+        //Comentat ja que no me crea mes d'una esfera jiji
+        //CreateEntity(app, app->sphereIdx, VP, sphereWorld);
 
-        app->lights.push_back({ light, color, vec3(0), position, intensity, static_cast<int>(app->entities.size() - 1) });
+        app->lights.push_back({ light, color, vec3(0), position, intensity });
     }
 }
 
@@ -71,10 +72,10 @@ GLuint CreateProgramFromSource(String programSource, const char* shaderName)
         programSource.str
     };
     const GLint vertexShaderLengths[] = {
-        (GLint) strlen(versionString),
-        (GLint) strlen(shaderNameDefine),
-        (GLint) strlen(vertexShaderDefine),
-        (GLint) programSource.len
+        (GLint)strlen(versionString),
+        (GLint)strlen(shaderNameDefine),
+        (GLint)strlen(vertexShaderDefine),
+        (GLint)programSource.len
     };
     const GLchar* fragmentShaderSource[] = {
         versionString,
@@ -83,10 +84,10 @@ GLuint CreateProgramFromSource(String programSource, const char* shaderName)
         programSource.str
     };
     const GLint fragmentShaderLengths[] = {
-        (GLint) strlen(versionString),
-        (GLint) strlen(shaderNameDefine),
-        (GLint) strlen(fragmentShaderDefine),
-        (GLint) programSource.len
+        (GLint)strlen(versionString),
+        (GLint)strlen(shaderNameDefine),
+        (GLint)strlen(fragmentShaderDefine),
+        (GLint)programSource.len
     };
 
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
@@ -181,14 +182,14 @@ Image LoadImage(const char* filename)
 GLuint CreateTexture2DFromImage(Image image)
 {
     GLenum internalFormat = GL_RGB8;
-    GLenum dataFormat     = GL_RGB;
-    GLenum dataType       = GL_UNSIGNED_BYTE;
+    GLenum dataFormat = GL_RGB;
+    GLenum dataType = GL_UNSIGNED_BYTE;
 
     switch (image.nchannels)
     {
-        case 3: dataFormat = GL_RGB; internalFormat = GL_RGB8; break;
-        case 4: dataFormat = GL_RGBA; internalFormat = GL_RGBA8; break;
-        default: ELOG("LoadTexture2D() - Unsupported number of channels");
+    case 3: dataFormat = GL_RGB; internalFormat = GL_RGB8; break;
+    case 4: dataFormat = GL_RGBA; internalFormat = GL_RGBA8; break;
+    default: ELOG("LoadTexture2D() - Unsupported number of channels");
     }
 
     GLuint texHandle;
@@ -282,10 +283,10 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 }
 void SetUpCamera(App* app)
 {
-    app->worldCamera.position = glm::vec3(10, 15, 50);
+    app->worldCamera.position = glm::vec3(10, 90, 120);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.yaw = -90.0f;
-    app->worldCamera.pitch = 0.0f;
+    app->worldCamera.pitch = -30.0f;
     app->worldCamera.movementSpeed = 40.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
@@ -333,6 +334,18 @@ void ExtensionsOpenGL(App* app)
     }
 }
 
+void TestParaMiquel(App* app)
+{
+    for (int x = -15; x < 15; ++x)
+    {
+        for (int z = -15; z < 15; ++z)
+        {
+            glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 15, 0.0f, z * 15), 2);
+        }
+    }
+}
+
 void Init(App* app)
 {
     ExtensionsOpenGL(app);
@@ -345,52 +358,86 @@ void Init(App* app)
 
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
-    app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
+    app->pikachu = LoadModel(app, "Pikachu/Pikachu.obj");
 
-    app->patrickIdx = LoadModel(app, "Thun/Thun.obj");
-    
-    u32 planeIdx = LoadModel(app, "./Plane.obj");
-    
-    app->sphereIdx = LoadModel(app, "./Sphere.obj");
-   
-    u32 test_1 = LoadModel(app, "./Entity_test.obj");
+    u32 planeIdx = LoadModel(app, "Plane/Plane.obj");
+
+    u32 cone = LoadModel(app, "Cone/Cone.obj");
+
+    u32 torus = LoadModel(app, "Torus/Torus.obj");
+
+    u32 skyBox = LoadModel(app, "SkyBox/SkyBox.obj");
+
+    u32 sphere = LoadModel(app, "Sphere/Sphere.obj");
+
+    u32 cube = LoadModel(app, "Cube/Cube.obj");
+
+    u32 monkey = LoadModel(app, "Monkey/Monkey.obj");
+
+    //Comentat ja que no me crea mes d'una esfera jiji
+    //app->sphereIdx = LoadModel(app, "Sphere/Sphere_Light.obj");
+
+    u32 test_1 = LoadModel(app, "Test/Entity_test.obj");
+
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
     float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
     float near = 0.1f;
-    float far = 1000.0f;
+    float far = 5000.0f;
     app->worldCamera.projectionMatrix = glm::perspective(glm::radians(60.0f), aspectRatio, near, far);
-    app->worldCamera.viewMatrix = glm::lookAt(vec3(10,15, 50), vec3(0, 1, 0), vec3(0, 1, 0));
-    
+    app->worldCamera.viewMatrix = glm::lookAt(vec3(47, 26, 40), vec3(0, 1, 0), vec3(0, 1, 0));
+
 
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
-    app->globalUBO = CreateConstantBuffer(app->maxUniformBufferSize);
+
+    const u32 sizePerLight =
+        sizeof(int) + 3 * sizeof(float) + 3 * sizeof(float) + 3 * sizeof(float) + sizeof(float) + 4;
+
+
+    const u32 fixedUBOSize = sizeof(glm::vec3) + sizeof(int);
+
+    app->maxLights = (app->maxUniformBufferSize - fixedUBOSize) / sizePerLight;
+
+    u32 globalUBOSize = fixedUBOSize + (app->maxLights * sizePerLight);
+    app->globalUBO = CreateBuffer(globalUBOSize, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
-    
-    CreateLight(app, LightType::Light_Directional, vec3(1),vec3(0), 1.f);
-    
-    UpdateLights(app);
+
+    //TestParaMiquel(app);  //Crea 1000 llums a l'escena
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 1.5);
+    CreateLight(app, LightType::Light_Point, vec3(0, 1, 0), vec3(-12, 1, -15), 40);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)));
-    
+
+    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)));
+
+    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)));
+
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)));
+
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)));
+
+    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)));
+
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
 
-    CreateEntity(app, app->patrickIdx, VP, glm::translate(glm::vec3(6, 0, 5)));
+    CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>());
+
+    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)));
 
     UnmapBuffer(entityUBO);
 
     app->mode = Mode_Forward_Geometry;
 
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
+    UpdateLights(app);
 }
-
 void Gui(App* app)
 {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -410,19 +457,19 @@ void Gui(App* app)
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
         GLuint textureID = app->primaryFBO.attachments[0].second;
-        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO) 
+        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO)
         {
             textureID = app->primaryFBO.attachments[0].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS) 
+        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS)
         {
             textureID = app->primaryFBO.attachments[1].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION) 
+        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION)
         {
             textureID = app->primaryFBO.attachments[2].second;
         }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR) 
+        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR)
         {
             textureID = app->primaryFBO.attachments[3].second;
         }
@@ -431,14 +478,10 @@ void Gui(App* app)
             textureID = app->primaryFBO.depthHandle;
         }
 
-        //Todo: Poner ventana aparte
-        //ImGui::Image((ImTextureID)(intptr_t)textureID, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
-
-
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
 
         const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
-        
+
         {
             ImGuiStyle& style = ImGui::GetStyle();
 
@@ -455,8 +498,8 @@ void Gui(App* app)
             if (isActive) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
             }
-           
-            
+
+
             if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
                 app->bufferViewMode = static_cast<App::BufferViewMode>(i);
                 if (i != 0)
@@ -471,7 +514,7 @@ void Gui(App* app)
             {
                 ImGui::SameLine();
             }
-        }       
+        }
         ImGui::PopStyleVar();
     }
     ImGui::End();
@@ -479,7 +522,11 @@ void Gui(App* app)
     ImGui::End();
     ImGui::Begin("Inspector");
     {
-        ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
+        if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
+            ImGui::Text("Lights that can be suppoorted by the PC: %u", app->maxLights);
+            ImGui::Text("UBO Size: %d bytes", app->maxUniformBufferSize);
+        }
         ImGui::Separator();
 
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -498,21 +545,40 @@ void Gui(App* app)
                 CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
                 UpdateLights(app);
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Add 2000 Point Lights"))
+
+            if (ImGui::Button("Add 400 Point Lights"))
             {
-                for (size_t i = 0; i < 1000; i++)
+                for (int x = -10; x < 10; ++x)
                 {
-                    CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
-
-                }
-                for (size_t i = 0; i < 1000; i++)
-                {
-                    CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
-
+                    for (int z = -10; z < 10; ++z)
+                    {
+                        glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10);
+                    }
                 }
                 UpdateLights(app);
             }
+
+            ImGui::SameLine();
+            if (ImGui::Button("Delete Last 400 lights"))
+            {
+                if (!app->lights.empty()) {
+
+                    size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
+
+                    app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
+
+                    UpdateLights(app);
+                }
+            }
+
+            u32 sceneLights;
+            for (size_t i = 0; i < app->lights.size(); i++)
+            {
+                sceneLights = i;
+            }
+
+            ImGui::Text("Lights in scene:  %d", sceneLights);
             for (size_t i = 0; i < app->lights.size(); ++i)
             {
                 ImGui::PushID(static_cast<int>(i));
@@ -556,7 +622,7 @@ void Gui(App* app)
                         lightChanged = true;
                     }
                 }
-                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 10.0f, "%.001f"))
+                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 100.0f, "%.001f"))
                 {
                     light.intensity = intensity;
                     lightChanged = true;
@@ -565,17 +631,6 @@ void Gui(App* app)
                 ImGui::SameLine();
                 if (ImGui::Button("Delete"))
                 {
-                    // Eliminar la entidad asociada si es una luz puntual
-                    if (light.type == LightType::Light_Point && light.entityIndex != -1)
-                    {
-                        app->entities.erase(app->entities.begin() + light.entityIndex);
-                        // Ajustar índices de las luces posteriores
-                        for (auto& otherLight : app->lights)
-                        {
-                            if (otherLight.entityIndex > light.entityIndex)
-                                otherLight.entityIndex--;
-                        }
-                    }
                     app->lights.erase(app->lights.begin() + i);
                     UpdateLights(app);
                     ImGui::PopID();
@@ -595,7 +650,7 @@ void Gui(App* app)
 
         ImGui::Begin("OpenGl Info");
         ImGui::Text("Extensions");
-        for (const auto& ext: app->glExtensions)
+        for (const auto& ext : app->glExtensions)
         {
             ImGui::Text("%s", ext.c_str());
         }
@@ -603,6 +658,7 @@ void Gui(App* app)
 
     }
 }
+
 
 void UpdateCameraVectors(Camera* camera) {
     
@@ -733,7 +789,7 @@ void Update(App* app) {
     animationTime += app->deltaTime;
 
     for (auto& entity : app->entities) {
-        if (entity.modelIndex == app->patrickIdx) {
+        if (entity.modelIndex == app->pikachu) {
             // Floating animation
             float yPos = sin(animationTime) * 2.0f;
             // Spinning animation
@@ -760,16 +816,7 @@ void UpdateLights(App* app)
     {
         AlignHead(app->globalUBO, sizeof(vec4));
         Light& light = app->lights[i];
-        if (light.type == LightType::Light_Point && light.entityIndex != -1)
-        {
-            if (light.entityIndex < app->entities.size())
-            {
-                Entity& sphereEntity = app->entities[light.entityIndex];
-                glm::vec3 modelOffset = vec3(2.f, .0f, 2.f); 
-                glm::mat4 correction = glm::translate(glm::mat4(1.0f), modelOffset);
-                sphereEntity.worldMatrix = glm::translate(glm::mat4(1.0f), light.position) * correction;
-            }
-        }
+       
         PushUInt(app->globalUBO, static_cast<int>(light.type));
         PushVec3(app->globalUBO, light.color * light.intensity);
         PushVec3(app->globalUBO, light.direction);
