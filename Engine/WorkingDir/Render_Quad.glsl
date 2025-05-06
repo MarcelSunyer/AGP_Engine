@@ -25,7 +25,7 @@ struct Light {
 layout(binding = 0) uniform GlobalParams {
     vec3 uCameraPosition;
     int uLightCount;
-    Light uLight[16];
+    Light uLight[128];
 };
 
 in vec2 vTexCoord;
@@ -45,37 +45,32 @@ uniform float uDepthIntensity = 0.5;
 layout(location = 0) out vec4 oColor;
 
 float LinearizeDepth(float depth) {
-    float z = depth * 2.0 - 1.0;
+    float z = depth * 5.0 - 1.0;
     return (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear));
 }
 
-vec3 CalcPointLight(Light aLight, vec3 aNormal, vec3 aPosition, vec3 aViewDir)
-{
-	vec3 lightDir = normalize(aLight.position - aPosition);
-	float diff = max(dot(aNormal, lightDir), 0.0);
-	vec3 reflectDir = reflect(-lightDir, aNormal);
-	float spec = pow(max(dot(normalize(aViewDir), reflectDir), 0.0), 32.0); // Aumentar brillo
+vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
+    vec3 lightDir = normalize(light.position - position);
+    float distance = length(light.position - position);
+    float attenuation = 1.6 / (1.0+ 0.1 * (distance * distance));
 
-	float distance = length(aLight.position - aPosition);
-	float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
+    vec3 ambient = light.color * 0.5;
+    float diff = max(dot(normal, lightDir), 1.2);
+    vec3 diffuse = light.color * diff;
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0); // Implicit normalization like Code 1
+    vec3 specular = 0.5 * spec * light.color; // Higher intensity from Code 2
 
-	vec3 ambient = aLight.color * 0.1;
-	vec3 diffuse = aLight.color * diff;
-	vec3 specular = 0.5 * spec * aLight.color; // Aumentar especular
-	return (ambient + diffuse + specular) * attenuation;
+    return (ambient + diffuse + specular) * attenuation;
 }
-
-vec3 CalcDirLight(Light aLight, vec3 aNormal, vec3 aViewDir)
-{
-    vec3 lightDir = normalize(-aLight.direction);
-    float diff = max(dot(aNormal, lightDir), 0.0);
-    vec3 reflectDir = reflect(-lightDir, aNormal);
-    float spec = pow(max(dot(normalize(aViewDir), reflectDir), 0.0), 32.0);
-    
-    vec3 ambient = aLight.color * 0.1;
-    vec3 diffuse = aLight.color * diff;
-    vec3 specular = 0.5 * spec * aLight.color;
-    return (ambient + diffuse + specular);
+vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
+    vec3 lightDir = normalize(-light.direction);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff;
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    vec3 specular = light.color * spec * 0.5;
+    return diffuse + specular;
 }
 
 void main() {

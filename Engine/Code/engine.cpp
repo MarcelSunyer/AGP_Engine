@@ -392,13 +392,6 @@ void Init(App* app)
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
-
-    const u32 sizePerLight =
-        sizeof(int) + 3 * sizeof(float) + 3 * sizeof(float) + 3 * sizeof(float) + sizeof(float) + 4;
-
-
-    const u32 fixedUBOSize = sizeof(glm::vec3) + sizeof(int);
-
     // Con esto (tamaño dinámico):
     const u32 lightDataSize = app->lights.size() * (sizeof(int) + 3 * sizeof(vec4));
     app->globalUBO = CreateConstantBuffer(lightDataSize + sizeof(vec4) + sizeof(int));
