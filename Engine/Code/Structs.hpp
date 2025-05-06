@@ -1,4 +1,4 @@
-#ifndef STRUCTS
+﻿#ifndef STRUCTS
 #define STRUCTS
 
 #include"platform.h"
@@ -345,8 +345,6 @@ struct App
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     bool showDepthOverlay = false;
     float depthIntensity = 0.5f;
-
-    u32 maxLights;
 };
 
 #endif // !STRUCTS

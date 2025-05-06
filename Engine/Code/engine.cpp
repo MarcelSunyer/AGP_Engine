@@ -399,10 +399,9 @@ void Init(App* app)
 
     const u32 fixedUBOSize = sizeof(glm::vec3) + sizeof(int);
 
-    app->maxLights = (app->maxUniformBufferSize - fixedUBOSize) / sizePerLight;
-
-    u32 globalUBOSize = fixedUBOSize + (app->maxLights * sizePerLight);
-    app->globalUBO = CreateBuffer(globalUBOSize, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
+    // Con esto (tamaño dinámico):
+    const u32 lightDataSize = app->lights.size() * (sizeof(int) + 3 * sizeof(vec4));
+    app->globalUBO = CreateConstantBuffer(lightDataSize + sizeof(vec4) + sizeof(int));
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //TestParaMiquel(app);  //Crea 1000 llums a l'escena
@@ -524,8 +523,6 @@ void Gui(App* app)
     {
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-            ImGui::Text("Lights that can be suppoorted by the PC: %u", app->maxLights);
-            ImGui::Text("UBO Size: %d bytes", app->maxUniformBufferSize);
         }
         ImGui::Separator();
 
@@ -808,21 +805,39 @@ void Update(App* app) {
     UnmapBuffer(app->entityUBO);
 }
 
-void UpdateLights(App* app)
-{
+void UpdateLights(App* app) {
+    const u32 sizePerLight = sizeof(int) + 3 * sizeof(vec4);
+    const u32 otherDataSize = sizeof(glm::vec3) + sizeof(int);
+    const u32 requiredSize = otherDataSize + static_cast<u32>(app->lights.size()) * sizePerLight;
+
+    // Check if the required size exceeds the maximum UBO size
+    if (requiredSize > app->maxUniformBufferSize) {
+        printf("Error: Light data exceeds maximum uniform buffer size! Required: %u, Max: %u", requiredSize, app->maxUniformBufferSize);
+        printf("\n");
+        if (app->globalUBO.size < requiredSize) {
+            UnmapBuffer(app->globalUBO);
+            app->globalUBO = CreateConstantBuffer(requiredSize);
+        }
+    }
+    else if (app->globalUBO.size < requiredSize) {
+        UnmapBuffer(app->globalUBO);
+        app->globalUBO = CreateConstantBuffer(requiredSize);
+    }
+
+    // Update the UBO with light data
     MapBuffer(app->globalUBO, GL_WRITE_ONLY);
-    PushMat3(app->globalUBO, app->worldCamera.position);
+    BindBuffer(app->globalUBO);
+
+    PushVec3(app->globalUBO, app->worldCamera.position);
     PushUInt(app->globalUBO, app->lights.size());
 
-    for (size_t i = 0; i < app->lights.size(); ++i)
-    {
-        AlignHead(app->globalUBO, sizeof(vec4));
-        Light& light = app->lights[i];
-       
+    for (auto& light : app->lights) {
+        AlignHead(app->globalUBO, 16);
         PushUInt(app->globalUBO, static_cast<int>(light.type));
         PushVec3(app->globalUBO, light.color * light.intensity);
         PushVec3(app->globalUBO, light.direction);
         PushVec3(app->globalUBO, light.position);
+        AlignHead(app->globalUBO, 16);
     }
 
     UnmapBuffer(app->globalUBO);
