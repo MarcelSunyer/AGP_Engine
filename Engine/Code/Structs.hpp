@@ -116,6 +116,7 @@ struct Entity {
     u32 modelIndex;
     u32 entityBufferOffset;
     u32 entityBufferSize;
+    std::string name;
 };
 
 

@@ -14,7 +14,7 @@
 #include <stb_image_write.h>
 
 
-void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition)
+void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition, std::string name)
 {
     Entity entity;
     AlignHead(app->entityUBO, app->uniformBlockAlignment);
@@ -22,6 +22,7 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
 
     entity.worldMatrix = aPosition;
     entity.modelIndex = aModelIndx;
+    entity.name = name;
     glm::mat4 normalMatrix = glm::transpose(glm::inverse(aPosition));
     PushMat4(app->entityUBO, entity.worldMatrix);
     PushMat4(app->entityUBO, normalMatrix);
@@ -406,23 +407,23 @@ void Init(App* app)
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
-    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)));
+    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), " ");
 
-    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)));
+    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)), "Cone");
 
-    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)));
+    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)), "Torus");
 
-    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)));
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere");
 
-    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)));
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
 
-    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)));
+    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey");
 
-    CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>());
+    CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>(), "Plane");
 
-    CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>());
+    CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>(), "SkyBox");
 
-    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)));
+    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)), "Pikachu");
 
     UnmapBuffer(entityUBO);
 
@@ -518,20 +519,18 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen)) {
             bool entityChanged = false;
             glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
-
+            
             for (size_t i = 0; i < app->entities.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
 
                 glm::vec3 entityPosition = glm::vec3(app->entities[i].worldMatrix[3]);
 
-                if (app->entities[i].modelIndex == app->pikachu) {
-                    if (ImGui::DragFloat3("Pikachu Position", &entityPosition[0], 0.1f)) {
-                        app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
-                        entityChanged = true;
-                    }
+                if (app->entities[i].modelIndex == app->pikachu || app->entities[i].name == " " || app->entities[i].name == "SkyBox") {
+                    
                 }
                 else {
-                    if (ImGui::DragFloat3(("Position " + std::to_string(i)).c_str(), &entityPosition[0], 0.1f)) {
+                    std::string label = "Geometry: " + app->entities[i].name;
+                    if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
                         app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
                         entityChanged = true;
                     }
@@ -828,11 +827,10 @@ void Update(App* app) {
         glm::mat4 vpMatrix = VP * entity.worldMatrix;
         glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
 
-        // worldMatrix
         memcpy((char*)app->entityUBO.data + entity.entityBufferOffset, &entity.worldMatrix, sizeof(glm::mat4));
-        // VP * worldMatrix
+
         memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + sizeof(glm::mat4), &vpMatrix, sizeof(glm::mat4));
-        // normalMatrix
+
         memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + 2 * sizeof(glm::mat4), &normalMatrix, sizeof(glm::mat4));
     }
 
@@ -845,7 +843,7 @@ void UpdateLights(App* app) {
     const u32 otherDataSize = sizeof(glm::vec3) + sizeof(int);
     const u32 requiredSize = otherDataSize + static_cast<u32>(app->lights.size()) * sizePerLight;
 
-    // Check if the required size exceeds the maximum UBO size
+
     if (requiredSize > app->maxUniformBufferSize) {
         printf("Error: Light data exceeds maximum uniform buffer size! Required: %u, Max: %u", requiredSize, app->maxUniformBufferSize);
         printf("\n");
@@ -859,7 +857,6 @@ void UpdateLights(App* app) {
         app->globalUBO = CreateConstantBuffer(requiredSize);
     }
 
-    // Update the UBO with light data
     MapBuffer(app->globalUBO, GL_WRITE_ONLY);
     BindBuffer(app->globalUBO);
 
