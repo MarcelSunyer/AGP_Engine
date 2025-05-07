@@ -280,6 +280,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     glActiveTexture(GL_TEXTURE0);
+    UpdateLights(app);
 }
 void SetUpCamera(App* app)
 {
@@ -514,6 +515,43 @@ void Gui(App* app)
     ImGui::End();
     ImGui::Begin("Inspector");
     {
+        if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen)) {
+            bool entityChanged = false;
+            glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
+
+            for (size_t i = 0; i < app->entities.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+
+                glm::vec3 entityPosition = glm::vec3(app->entities[i].worldMatrix[3]);
+
+                if (app->entities[i].modelIndex == app->pikachu) {
+                    if (ImGui::DragFloat3("Pikachu Position", &entityPosition[0], 0.1f)) {
+                        app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
+                        entityChanged = true;
+                    }
+                }
+                else {
+                    if (ImGui::DragFloat3(("Position " + std::to_string(i)).c_str(), &entityPosition[0], 0.1f)) {
+                        app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
+                        entityChanged = true;
+                    }
+                }
+
+                ImGui::PopID();
+            }
+
+            if (entityChanged) {
+                MapBuffer(app->entityUBO, GL_WRITE_ONLY);
+                for (auto& entity : app->entities) {
+                    glm::mat4 newVPMatrix = VP * entity.worldMatrix;
+                    memcpy((char*)app->entityUBO.data + entity.entityBufferOffset, &entity.worldMatrix, sizeof(glm::mat4));
+                    memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + sizeof(glm::mat4), &newVPMatrix, sizeof(glm::mat4));
+                }
+                UnmapBuffer(app->entityUBO);
+            }
+        }
+
+
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
         }
@@ -650,6 +688,7 @@ void Gui(App* app)
 }
 
 
+
 void UpdateCameraVectors(Camera* camera) {
     
     glm::vec3 front;
@@ -780,22 +819,25 @@ void Update(App* app) {
 
     for (auto& entity : app->entities) {
         if (entity.modelIndex == app->pikachu) {
+            // Animación flotante de Pikachu
             float yPos = sin(animationTime) * 7.5f;
-
             glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
             entity.worldMatrix = translation;
-            glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
-            size_t normalMatrixOffset = entity.entityBufferOffset + 2 * sizeof(glm::mat4);
-            memcpy((char*)app->entityUBO.data + normalMatrixOffset, &normalMatrix, sizeof(glm::mat4));
         }
 
-        size_t matrixOffset = entity.entityBufferOffset + sizeof(glm::mat4);
-        glm::mat4 newVPMatrix = VP * entity.worldMatrix;
-        memcpy((char*)app->entityUBO.data + matrixOffset, &newVPMatrix, sizeof(glm::mat4));
+        glm::mat4 vpMatrix = VP * entity.worldMatrix;
+        glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
 
+        // worldMatrix
+        memcpy((char*)app->entityUBO.data + entity.entityBufferOffset, &entity.worldMatrix, sizeof(glm::mat4));
+        // VP * worldMatrix
+        memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + sizeof(glm::mat4), &vpMatrix, sizeof(glm::mat4));
+        // normalMatrix
+        memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + 2 * sizeof(glm::mat4), &normalMatrix, sizeof(glm::mat4));
     }
 
     UnmapBuffer(app->entityUBO);
+    UpdateLights(app);
 }
 
 void UpdateLights(App* app) {
