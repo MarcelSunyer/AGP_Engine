@@ -1,4 +1,4 @@
-#include "AssimpModelLoading.h"
+﻿#include "AssimpModelLoading.h"
 
 
 void ProcessAssimpMesh(const aiScene* scene, aiMesh* mesh, Mesh* myMesh, u32 baseMeshMaterialIndex, std::vector<u32>& submeshMaterialIndices)
@@ -111,43 +111,26 @@ void ProcessAssimpMaterial(App* app, aiMaterial* material, Material& myMaterial,
         material->GetTexture(aiTextureType_DIFFUSE, 0, &aiFilename);
         String filename = MakeString(aiFilename.C_Str());
         String filepath = MakePath(directory, filename);
-        myMaterial.albedoTextureIdx = LoadTexture2D(app, filepath.str);
-    }
-    if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0)
-    {
-        material->GetTexture(aiTextureType_EMISSIVE, 0, &aiFilename);
-        String filename = MakeString(aiFilename.C_Str());
-        String filepath = MakePath(directory, filename);
-        myMaterial.emissiveTextureIdx = LoadTexture2D(app, filepath.str);
-    }
-    if (material->GetTextureCount(aiTextureType_SPECULAR) > 0)
-    {
-        material->GetTexture(aiTextureType_SPECULAR, 0, &aiFilename);
-        String filename = MakeString(aiFilename.C_Str());
-        String filepath = MakePath(directory, filename);
-        myMaterial.specularTextureIdx = LoadTexture2D(app, filepath.str);
+        myMaterial.albedoTextureIdx = LoadTexture2D(app, filepath.str, TextureType::Albedo);
     }
     if (material->GetTextureCount(aiTextureType_NORMALS) > 0)
     {
         material->GetTexture(aiTextureType_NORMALS, 0, &aiFilename);
         String filename = MakeString(aiFilename.C_Str());
         String filepath = MakePath(directory, filename);
-        myMaterial.normalsTextureIdx = LoadTexture2D(app, filepath.str);
+        myMaterial.normalsTextureIdx = LoadTexture2D(app, filepath.str, TextureType::Normal);
     }
     if (material->GetTextureCount(aiTextureType_HEIGHT) > 0)
     {
         material->GetTexture(aiTextureType_HEIGHT, 0, &aiFilename);
         String filename = MakeString(aiFilename.C_Str());
         String filepath = MakePath(directory, filename);
-        myMaterial.bumpTextureIdx = LoadTexture2D(app, filepath.str);
+        myMaterial.heighTextureIdx = LoadTexture2D(app, filepath.str, TextureType::Height);
     }
-
-    //myMaterial.createNormalFromBump();
 }
 
 void ProcessAssimpNode(const aiScene* scene, aiNode* node, Mesh* myMesh, u32 baseMeshMaterialIndex, std::vector<u32>& submeshMaterialIndices)
 {
-    // process all the node's meshes (if any)
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
@@ -179,7 +162,7 @@ u32 LoadModel(App* app, const char* filename)
         {
             char errorMessage[256];
             sprintf_s(errorMessage, "Error loading mesh %s: %s", filename, aiGetErrorString());
-            
+
             //ELOG("Error loading mesh");
             return UINT32_MAX;
         }

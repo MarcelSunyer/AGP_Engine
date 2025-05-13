@@ -180,31 +180,50 @@ Image LoadImage(const char* filename)
 }
 
 
-GLuint CreateTexture2DFromImage(Image image)
-{
+GLuint CreateTexture2DFromImage(Image image, TextureType type) {
     GLenum internalFormat = GL_RGB8;
     GLenum dataFormat = GL_RGB;
     GLenum dataType = GL_UNSIGNED_BYTE;
 
-    switch (image.nchannels)
-    {
-    case 3: dataFormat = GL_RGB; internalFormat = GL_RGB8; break;
-    case 4: dataFormat = GL_RGBA; internalFormat = GL_RGBA8; break;
-    default: ELOG("LoadTexture2D() - Unsupported number of channels");
+    switch (image.nchannels) {
+    case 1:
+        dataFormat = GL_RED;
+        internalFormat = GL_R8;
+        break;
+    case 3:
+        dataFormat = GL_RGB;
+        internalFormat = GL_RGB8;
+        break;
+    case 4:
+        dataFormat = GL_RGBA;
+        internalFormat = GL_RGBA8;
+        break;
+    default:
+        ELOG("LoadTexture2D() - Unsupported number of channels");
     }
 
     GLuint texHandle;
     glGenTextures(1, &texHandle);
     glBindTexture(GL_TEXTURE_2D, texHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, image.size.x, image.size.y, 0, dataFormat, dataType, image.pixels);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0);
 
+    // Texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    if (type == TextureType::Normal) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    else if (type == TextureType::Height) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
     return texHandle;
 }
 void FreeImage(Image image)
@@ -212,7 +231,7 @@ void FreeImage(Image image)
     stbi_image_free(image.pixels);
 }
 
-u32 LoadTexture2D(App* app, const char* filepath)
+u32 LoadTexture2D(App* app, const char* filepath, TextureType type)
 {
     for (u32 texIdx = 0; texIdx < app->textures.size(); ++texIdx)
         if (app->textures[texIdx].filepath == filepath)
@@ -223,8 +242,9 @@ u32 LoadTexture2D(App* app, const char* filepath)
     if (image.pixels)
     {
         Texture tex = {};
-        tex.handle = CreateTexture2DFromImage(image);
+        tex.handle = CreateTexture2DFromImage(image, type);
         tex.filepath = filepath;
+        tex.type = type;
 
         u32 texIdx = app->textures.size();
         app->textures.push_back(tex);
@@ -358,7 +378,11 @@ void Init(App* app)
 
     app->texturedGeometryProgramIdx = LoadProgram(app, "Render_Quad.glsl", "Render_Quad");
 
+    app->reliefMappingIdx = LoadProgram(app, "Relief_Mapping.glsl", "RELIEF_MAPPING");
+
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
+
+    u32 cube = LoadModel(app, "Cube/Cube.obj");
 
     app->pikachu = LoadModel(app, "Pikachu/Pikachu.obj");
 
@@ -372,7 +396,7 @@ void Init(App* app)
 
     u32 sphere = LoadModel(app, "Sphere/Sphere.obj");
 
-    u32 cube = LoadModel(app, "Cube/Cube.obj");
+
 
     u32 monkey = LoadModel(app, "Monkey/Monkey.obj");
 
@@ -407,7 +431,10 @@ void Init(App* app)
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
-    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), " ");
+
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
+
+    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), "Test");
 
     CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)), "Cone");
 
@@ -415,7 +442,6 @@ void Init(App* app)
 
     CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere");
 
-    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
 
     CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey");
 
@@ -519,14 +545,14 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen)) {
             bool entityChanged = false;
             glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
-            
+
             for (size_t i = 0; i < app->entities.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
 
                 glm::vec3 entityPosition = glm::vec3(app->entities[i].worldMatrix[3]);
 
                 if (app->entities[i].modelIndex == app->pikachu || app->entities[i].name == " " || app->entities[i].name == "SkyBox") {
-                    
+
                 }
                 else {
                     std::string label = "Geometry: " + app->entities[i].name;
@@ -689,7 +715,7 @@ void Gui(App* app)
 
 
 void UpdateCameraVectors(Camera* camera) {
-    
+
     glm::vec3 front;
     front.x = cos(glm::radians(camera->yaw)) * cos(glm::radians(camera->pitch));
     front.y = sin(glm::radians(camera->pitch));
@@ -701,7 +727,7 @@ void UpdateCameraVectors(Camera* camera) {
 }
 
 void ProcessMouseMovement(Camera* camera, float xoffset, float yoffset) {
-    
+
     xoffset *= camera->mouseSensitivity;
     yoffset *= camera->mouseSensitivity;
 
@@ -879,68 +905,86 @@ void Render(App* app)
 {
     switch (app->mode)
     {
-        case Mode_TexturedQuad:
+    case Mode_TexturedQuad:
+    {
+
+    }break;
+    case Mode_Forward_Geometry:
+    {
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, app->primaryFBO.handle);
+
+        std::vector<GLuint> textures;
+        for (auto& it : app->primaryFBO.attachments)
         {
-            
-        }break;
-        case Mode_Forward_Geometry:
-        {
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, app->primaryFBO.handle);
-
-            std::vector<GLuint> textures;
-            for (auto& it : app->primaryFBO.attachments)
-            {
-                textures.push_back(it.second);
-            }
-            glDrawBuffers(textures.size(), textures.data());
-
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-            Program& geometryProgram = app->programs[app->geometryProgramIdx];
-            glUseProgram(geometryProgram.handle);
-
-            glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
-
-            for (const auto& entity : app->entities)
-            {
-                glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
-
-                Model& model = app->models[entity.modelIndex];
-                Mesh& mesh = app->meshes[model.meshIdx];
-
-                for (size_t i = 0; i < mesh.submeshes.size(); ++i)
-                {
-                    GLuint vao = FindVao(mesh, i, geometryProgram);
-                    glBindVertexArray(vao);
-
-                    u32 submeshMaterialIdx = model.materialIdx[i];
-                    Material& submeshMaterial = app->materials[submeshMaterialIdx];
-
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
-
-                    glUniform1i(app->patrickTextureUniform, 0);
-
-                    Submesh& submesh = mesh.submeshes[i];
-                    glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
-
-                    glBindTexture(GL_TEXTURE_2D, 0);
-                }
-            }
-
-            glBindFramebuffer(GL_FRAMEBUFFER,0);
-            glUseProgram(0);
-            RenderScreenFillQuad(app, app->primaryFBO);
+            textures.push_back(it.second);
         }
-        break; 
+        glDrawBuffers(textures.size(), textures.data());
 
-        default:;
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+        Program& geometryProgram = app->programs[app->geometryProgramIdx];
+        glUseProgram(geometryProgram.handle);
+
+        glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
+
+        for (const auto& entity : app->entities)
+        {
+            Program* programToUse = &app->programs[app->geometryProgramIdx];
+
+            if (entity.name == "Monkey")
+            {
+                programToUse = &app->programs[app->reliefMappingIdx];
+            }
+
+            glUseProgram(programToUse->handle);
+            glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
+            glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
+
+            Model& model = app->models[entity.modelIndex];
+            Mesh& mesh = app->meshes[model.meshIdx];
+
+            for (size_t i = 0; i < mesh.submeshes.size(); ++i)
+            {
+                GLuint vao = FindVao(mesh, i, *programToUse);
+                glBindVertexArray(vao);
+
+                u32 matIdx = model.materialIdx[i];
+                Material& mat = app->materials[matIdx];
+
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(programToUse->handle, "uDiffuse"), 0);
+
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(programToUse->handle, "uNormal"), 1);
+
+                glActiveTexture(GL_TEXTURE2);
+                glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
+                glUniform1i(glGetUniformLocation(programToUse->handle, "uHeight"), 2);
+
+                glUniform1f(glGetUniformLocation(programToUse->handle, "heightScale"), 0.05f);
+
+                Submesh& submesh = mesh.submeshes[i];
+                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glUseProgram(0);
+        RenderScreenFillQuad(app, app->primaryFBO);
+    }
+    break;
+
+    default:;
     }
 }
 
@@ -981,7 +1025,7 @@ void CleanUp(App* app)
 GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
 {
     Submesh& submesh = mesh.submeshes[submeshIndex];
- 
+
     for (u32 i = 0; i < submesh.vaos.size(); ++i) {
         if (submesh.vaos[i].programHandle == program.handle) {
             return submesh.vaos[i].handle;
@@ -1006,7 +1050,7 @@ GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
             {
                 const u32 index = meshLayout.location;
                 const u32 ncomp = meshLayout.componentCount;
-                const u32 offset = meshLayout.offset + submesh.vertexOffset; 
+                const u32 offset = meshLayout.offset + submesh.vertexOffset;
                 const u32 stride = submesh.vertexBufferLayout.stride;
                 glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
                 glEnableVertexAttribArray(index);
@@ -1015,7 +1059,7 @@ GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
                 break;
             }
         }
-        assert(attributeWasLinked); 
+        assert(attributeWasLinked);
     }
 
     glBindVertexArray(0);

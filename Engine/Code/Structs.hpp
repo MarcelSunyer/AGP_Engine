@@ -46,10 +46,18 @@ struct Image
     i32   stride;
 };
 
+enum TextureType
+{
+    Albedo,
+    Normal,
+    Height
+};
+
 struct Texture
 {
     GLuint      handle;
     std::string filepath;
+    TextureType type;
 };
 
 struct VertexShaderAttribute {
@@ -66,7 +74,7 @@ struct Program
     GLuint handle;
     std::string filepath;
     std::string programName;
-    u64 lastWriteTimestamp; // What is this for?
+    u64 lastWriteTimestamp;
     VertexShaderLayout vertexInputLayout;
 };
 
@@ -152,10 +160,8 @@ struct Material {
     vec3 emissive;
     f32 smoothness;
     u32 albedoTextureIdx;
-    u32 emissiveTextureIdx;
-    u32 specularTextureIdx;
     u32 normalsTextureIdx;
-    u32 bumpTextureIdx;
+    u32 heighTextureIdx;
 };
 
 enum class LightType {
@@ -295,6 +301,7 @@ struct App
     // program indices
     u32 texturedGeometryProgramIdx;
     u32 geometryProgramIdx;
+    u32 reliefMappingIdx;
 
     //Modelo 3D cargado
     u32 pikachu;

@@ -1,4 +1,4 @@
-//
+﻿//
 // engine.h: This file contains the types and functions relative to the engine.
 //
 
@@ -24,7 +24,7 @@ void CleanUp(App* app);
 
 GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program);
 
-u32 LoadTexture2D(App* app, const char* filepath);
+u32 LoadTexture2D(App* app, const char* filepath, TextureType type);
 
 void UpdateCameraVectors(Camera* camera);
 
