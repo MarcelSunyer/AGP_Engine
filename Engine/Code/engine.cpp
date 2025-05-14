@@ -937,11 +937,6 @@ void Render(App* app)
         {
             Program* programToUse = &app->programs[app->geometryProgramIdx];
 
-            if (entity.name == "Monkey")
-            {
-                programToUse = &app->programs[app->reliefMappingIdx];
-            }
-
             glUseProgram(programToUse->handle);
             glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
             glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);

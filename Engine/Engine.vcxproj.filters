@@ -116,5 +116,8 @@
     <None Include="WorkingDir\RENDER_GEOMETRY.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="WorkingDir\Relief_Mapping.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
