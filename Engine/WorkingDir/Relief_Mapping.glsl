@@ -34,33 +34,21 @@ void main()
 
 #elif defined(FRAGMENT)
 
-in vec2 vTexCoord;
-in vec3 vViewDirTS;
-
 uniform sampler2D uDiffuse;
 uniform sampler2D uBump; // RGB = normal, A = height
 
-uniform float heightScale = 0.05;
-
+in vec2 vTexCoord;
 layout(location = 0) out vec4 oColor;
 
-void main()
-{
-    // De momento: no hay parallax aún, simplemente muestreamos los valores
+void main() {
+    vec3 albedo = texture(uDiffuse, vTexCoord).rgb;
+    vec3 normal = texture(uBump, vTexCoord).rgb; // usa uBump explícitamente
 
-    // Diffuse color
-    vec3 color = texture(uDiffuse, vTexCoord).rgb;
-
-    // Normal map (de -1 a 1)
-    vec3 normalTS = texture(uBump, vTexCoord).rgb;
-    normalTS = normalize(normalTS * 2.0 - 1.0);
-
-    // Height (en canal alpha)
-    float height = texture(uBump, vTexCoord).a;
-
-    // Visualización simple: devolver color + normal en RGB + height en alpha
-    oColor = vec4(color * 1.5 + normalTS * 0.5, height);
+    // Simple mezcla de albedo y normal para evitar optimización
+    vec3 color = mix(albedo, normal, 0.5);
+    oColor = vec4(color, 1.0);
 }
+
 
 #endif
 #endif

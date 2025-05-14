@@ -1,4 +1,4 @@
-#include "BufferManagement.h"
+﻿#include "BufferManagement.h"
 #include "platform.h"
 
 bool IsPowerOf2(u32 value)
