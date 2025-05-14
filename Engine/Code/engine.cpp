@@ -901,6 +901,51 @@ void UpdateLights(App* app) {
     UnmapBuffer(app->globalUBO);
 }
 
+void RenderEntityWithShader(App* app, const Entity& entity, Program* program) {
+    glUseProgram(program->handle);
+
+    // Enviar matrices y cámara al shader
+    glUniformMatrix4fv(glGetUniformLocation(program->handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
+    glUniformMatrix4fv(glGetUniformLocation(program->handle, "uView"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.viewMatrix));
+    glUniformMatrix4fv(glGetUniformLocation(program->handle, "uProj"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.projectionMatrix));
+    glUniform3fv(glGetUniformLocation(program->handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
+
+    // UBOs
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
+
+    Model& model = app->models[entity.modelIndex];
+    Mesh& mesh = app->meshes[model.meshIdx];
+
+    for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+        GLuint vao = FindVao(mesh, i, *program);
+        glBindVertexArray(vao);
+
+        u32 matIdx = model.materialIdx[i];
+        Material& mat = app->materials[matIdx];
+
+        // Texturas
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
+        glUniform1i(glGetUniformLocation(program->handle, "uDiffuse"), 0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+        glUniform1i(glGetUniformLocation(program->handle, "uBump"), 1); // Aquí van normales + height
+
+        glUniform1f(glGetUniformLocation(program->handle, "heightScale"), 0.05f); // opcional
+
+        Submesh& submesh = mesh.submeshes[i];
+        glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
+
+        // Limpieza
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
 void Render(App* app)
 {
     switch (app->mode)
@@ -937,6 +982,14 @@ void Render(App* app)
         {
             Program* programToUse = &app->programs[app->geometryProgramIdx];
 
+
+            if (entity.name == "Cube")
+            {
+                programToUse = &app->programs[app->reliefMappingIdx];
+            }
+            
+            RenderEntityWithShader(app, entity, programToUse);
+            
             glUseProgram(programToUse->handle);
             glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
             glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);

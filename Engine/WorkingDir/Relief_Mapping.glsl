@@ -1,114 +1,66 @@
 ﻿#ifdef RELIEF_MAPPING
 
-
 #if defined(VERTEX)
 
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-layout(location = 2) in vec2 aTexCoords;
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec2 aTexCoord;
+layout(location = 2) in vec3 aNormal;
 layout(location = 3) in vec3 aTangent;
-layout(location = 4) in vec3 aBitangent;
 
-layout(std140, binding = 0) uniform GlobalData {
-    vec3 cameraPos;
-    int numLights;
-    // otros datos...
-};
+out vec2 vTexCoord;
+out vec3 vViewDirTS;
 
-layout(std140, binding = 1) uniform EntityData {
-    mat4 model;
-    mat4 vp;
-    mat4 normalMatrix;
-};
-
-out VS_OUT {
-    vec2 TexCoords;
-    vec3 FragPos;
-    vec3 TangentViewPos;
-    vec3 TangentFragPos;
-    mat3 TBN;
-} vs_out;
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+uniform vec3 uCameraPosition;
 
 void main()
 {
-    vs_out.TexCoords = aTexCoords;
-    vec3 T = normalize(mat3(model) * aTangent);
-    vec3 B = normalize(mat3(model) * aBitangent);
-    vec3 N = normalize(mat3(model) * aNormal);
-    vs_out.TBN = transpose(mat3(T, B, N)); // para pasar a espacio tangente
+    vTexCoord = aTexCoord;
 
-    vec3 fragPos = vec3(model * vec4(aPos, 1.0));
-    vs_out.FragPos = fragPos;
-    vs_out.TangentFragPos = vs_out.TBN * fragPos;
-    vs_out.TangentViewPos = vs_out.TBN * cameraPos;
+    // Build TBN matrix for tangent space
+    vec3 T = normalize(mat3(uModel) * aTangent);
+    vec3 N = normalize(mat3(uModel) * aNormal);
+    vec3 B = cross(N, T);
+    mat3 TBN = mat3(T, B, N);
 
-    gl_Position = vp * model * vec4(aPos, 1.0);
+    vec3 fragPosWorld = vec3(uModel * vec4(aPosition, 1.0));
+    vec3 viewDir = normalize(uCameraPosition - fragPosWorld);
+    vViewDirTS = TBN * viewDir;
+
+    gl_Position = uProj * uView * uModel * vec4(aPosition, 1.0);
 }
-#endif
 
 #elif defined(FRAGMENT)
 
-in VS_OUT {
-    vec2 TexCoords;
-    vec3 FragPos;
-    vec3 TangentViewPos;
-    vec3 TangentFragPos;
-    mat3 TBN;
-} fs_in;
+in vec2 vTexCoord;
+in vec3 vViewDirTS;
 
 uniform sampler2D uDiffuse;
-uniform sampler2D uNormal;
-uniform sampler2D uHeight;
+uniform sampler2D uBump; // RGB = normal, A = height
 
-uniform float heightScale;
+uniform float heightScale = 0.05;
 
-out vec4 FragColor;
-
-// Relief Mapping
-vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
-{
-    const float minLayers = 8.0;
-    const float maxLayers = 32.0;
-    float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0, 0.0, 1.0), viewDir)));
-
-    float layerDepth = 1.0 / numLayers;
-    float currentLayerDepth = 0.0;
-
-    vec2 P = viewDir.xy / viewDir.z * heightScale;
-    vec2 deltaTexCoords = P / numLayers;
-
-    vec2 currentTexCoords = texCoords;
-    float currentDepthMapValue = texture(uHeight, currentTexCoords).r;
-
-    while (currentLayerDepth < currentDepthMapValue)
-    {
-        currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = texture(uHeight, currentTexCoords).r;
-        currentLayerDepth += layerDepth;
-    }
-
-    return currentTexCoords;
-}
+layout(location = 0) out vec4 oColor;
 
 void main()
 {
-    vec3 viewDir = normalize(fs_in.TangentViewPos - fs_in.TangentFragPos);
-    vec2 texCoords = ParallaxMapping(fs_in.TexCoords, viewDir);
+    // De momento: no hay parallax aún, simplemente muestreamos los valores
 
-    if (texCoords.x > 1.0 || texCoords.y > 1.0 || texCoords.x < 0.0 || texCoords.y < 0.0)
-        discard;
+    // Diffuse color
+    vec3 color = texture(uDiffuse, vTexCoord).rgb;
 
-    vec3 normal = texture(uNormal, texCoords).rgb;
-    normal = normalize(normal * 2.0 - 1.0);
-    normal = normalize(fs_in.TBN * normal);
+    // Normal map (de -1 a 1)
+    vec3 normalTS = texture(uBump, vTexCoord).rgb;
+    normalTS = normalize(normalTS * 2.0 - 1.0);
 
-    vec3 color = texture(uDiffuse, texCoords).rgb;
+    // Height (en canal alpha)
+    float height = texture(uBump, vTexCoord).a;
 
-    vec3 lightDir = normalize(vec3(0.0, 0.0, 1.0));
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = diff * color;
-
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0); // todo rojo
-
+    // Visualización simple: devolver color + normal en RGB + height en alpha
+    oColor = vec4(color * 1.5 + normalTS * 0.5, height);
 }
+
+#endif
 #endif

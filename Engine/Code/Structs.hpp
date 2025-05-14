@@ -112,6 +112,13 @@ struct VertexBufferAttribute {
     u8 offset;
 };
 
+struct VertexV3V2N3T3 {
+    glm::vec3 pos;
+    glm::vec2 uv;
+    glm::vec3 normal;
+    glm::vec3 tangent;
+};
+
 struct VertexBufferLayout {
     std::vector<VertexBufferAttribute> attributes;
     u8 stride;
@@ -146,6 +153,7 @@ struct Submesh {
     u32 vertexOffset;
     u32 indexOffset;
     std::vector<Vao> vaos;
+
 };
 
 struct Mesh {
