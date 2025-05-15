@@ -425,12 +425,10 @@ void Init(App* app)
 
     //TestParaMiquel(app);  //Crea 1000 llums a l'escena
     CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 1.5);
-    CreateLight(app, LightType::Light_Point, vec3(0, 1, 0), vec3(-12, 1, -15), 40);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
-
 
     CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
 
@@ -441,7 +439,6 @@ void Init(App* app)
     CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)), "Torus");
 
     CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere");
-
 
     CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey");
 
@@ -931,9 +928,7 @@ void RenderEntityWithShader(App* app, const Entity& entity, Program* program) {
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-        glUniform1i(glGetUniformLocation(program->handle, "uBump"), 1); // Aquí van normales + height
-
-        glUniform1f(glGetUniformLocation(program->handle, "heightScale"), 0.05f); // opcional
+        glUniform1i(glGetUniformLocation(program->handle, "uBump"), 1); 
 
         Submesh& submesh = mesh.submeshes[i];
         glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
@@ -983,7 +978,7 @@ void Render(App* app)
             Program* programToUse = &app->programs[app->geometryProgramIdx];
 
 
-            if (entity.name == "Cube")
+           if (entity.name == "Cube")
             {
                 programToUse = &app->programs[app->reliefMappingIdx];
             }
@@ -1011,13 +1006,7 @@ void Render(App* app)
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-                glUniform1i(glGetUniformLocation(programToUse->handle, "uNormal"), 1);
-
-                glActiveTexture(GL_TEXTURE2);
-                glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
-                glUniform1i(glGetUniformLocation(programToUse->handle, "uHeight"), 2);
-
-                glUniform1f(glGetUniformLocation(programToUse->handle, "heightScale"), 0.05f);
+                glUniform1i(glGetUniformLocation(programToUse->handle, "uBump"), 1);
 
                 Submesh& submesh = mesh.submeshes[i];
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
