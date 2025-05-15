@@ -362,6 +362,7 @@ struct App
     bool showDepthOverlay = false;
     float depthIntensity = 0.5f;
 
+    float reliefStrength = 0.05f;
 };
 
 #endif // !STRUCTS
