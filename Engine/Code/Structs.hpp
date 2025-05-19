@@ -360,9 +360,7 @@ struct App
 
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     bool showDepthOverlay = false;
-    float depthIntensity = 0.0f;
-
-    float reliefStrength = 0.05f;
+    float reliefIntensity = 0.05f;
 };
 
 #endif // !STRUCTS

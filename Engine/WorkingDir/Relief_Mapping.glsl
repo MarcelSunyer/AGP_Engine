@@ -21,18 +21,15 @@ out Data {
 } VSOut;
 
 void main() {
-    // Calcular posición en mundo
     vec3 fragPos = vec3(uModel * vec4(position, 1.0));
     VSOut.texCoords = texCoords;
 
-    // Calcular matriz TBN
     vec3 T = normalize(mat3(uModel) * tangent);
     vec3 B = normalize(mat3(uModel) * bitangent);
     vec3 N = normalize(mat3(uModel) * normal);
     VSOut.TBN = mat3(T, B, N);
     VSOut.TBN = transpose(VSOut.TBN);
 
-    // Posiciones en espacio tangente
     VSOut.tangentFragPos = VSOut.TBN * fragPos;
     VSOut.tangentViewPos = VSOut.TBN * uViewPos;
 
@@ -55,10 +52,9 @@ uniform float uHeightScale;
 
 layout(location = 0) out vec4 oColor;
 
-// Función de Parallax Occlusion Mapping con interpolación
 vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
-    const float minLayers = 8.0;  // Reducido para mejor performance
-const float maxLayers = 32.0;
+    const float minLayers = 8.0; 
+    const float maxLayers = 32.0;
 
     float ndotv = clamp(dot(vec3(0.0, 0.0, 1.0), normalize(viewDirTS)), 0.0, 1.0);
     float numLayers = mix(maxLayers, minLayers, ndotv);
@@ -85,7 +81,6 @@ const float maxLayers = 32.0;
         depthFromMap = texture(uHeightMap, currentTexCoords).r;
     }
 
-    // Interpolación suave entre los dos últimos pasos
     float afterDepth = depthFromMap - currentDepth;
     float beforeDepth = prevDepthMap - (currentDepth - layerDepth);
     float weight = beforeDepth / (beforeDepth - afterDepth);
@@ -96,33 +91,28 @@ const float maxLayers = 32.0;
 }
 
 void main() {
-    // Dirección de vista en espacio tangente
     vec3 viewDirTS = normalize(FSIn.tangentViewPos - FSIn.tangentFragPos);
 
-    // Aplicar Relief Mapping
     vec2 displacedTexCoords = ParallaxOcclusionMapping(FSIn.texCoords, viewDirTS);
 
-    // Recorte si se sale del UV
     if (displacedTexCoords.x < 0.0 || displacedTexCoords.x > 1.0 ||
         displacedTexCoords.y < 0.0 || displacedTexCoords.y > 1.0)
         discard;
 
-    // Normal en espacio tangente y conversión a mundo
     vec3 normalTS = texture(uNormalMap, displacedTexCoords).rgb * 1.0 - 2.0;
-    // normalTS.g *= -1.0; // Solo si tu normal map usa sistema Y-invertido
+
     vec3 normalWS = normalize(FSIn.TBN * normalTS);
 
-    // Difusa
     vec3 albedo = texture(uDiffuse, displacedTexCoords).rgb;
 
-    // Iluminación simple direccional
+    //Todo
     vec3 lightDir = normalize(vec3(0.5, 1., 1.0));
-    float diff = max(dot(normalWS, lightDir), 0.2); // 0.2 = luz ambiente mínima
+    float diff = max(dot(normalWS, lightDir), 0.2);
 
     oColor = vec4(albedo * diff, 1.0);
 
     // Debug normal
-    // oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
+    //oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
 
     // Debug Heigh
     //oColor = vec4(texture(uHeightMap, displacedTexCoords).rrr, 1.0);

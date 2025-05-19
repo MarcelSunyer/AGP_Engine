@@ -289,7 +289,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glUniform1f(glGetUniformLocation(program.handle, "uFar"), 1000.0f);
     glUniform1i(glGetUniformLocation(program.handle, "uViewMode"), static_cast<int>(app->bufferViewMode));
     glUniform1i(glGetUniformLocation(program.handle, "uShowDepth"), app->showDepthOverlay ? 1 : 0);
-    glUniform1f(glGetUniformLocation(program.handle, "uHeightScale"), app->depthIntensity);
+    glUniform1f(glGetUniformLocation(program.handle, "uHeightScale"), app->reliefIntensity);
 
     // Render quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
@@ -386,6 +386,8 @@ void Init(App* app)
 
     u32 cube2 = LoadModel(app, "Cube2/Cube.obj");
 
+    u32 cube3 = LoadModel(app, "Cube3/Cube.obj");
+
     app->pikachu = LoadModel(app, "Pikachu/Pikachu.obj");
 
     u32 planeIdx = LoadModel(app, "Plane/Plane.obj");
@@ -397,8 +399,6 @@ void Init(App* app)
     u32 skyBox = LoadModel(app, "SkyBox/SkyBox.obj");
 
     u32 sphere = LoadModel(app, "Sphere/Sphere.obj");
-
-
 
     u32 monkey = LoadModel(app, "Monkey/Monkey.obj");
 
@@ -426,7 +426,7 @@ void Init(App* app)
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //TestParaMiquel(app);  //Crea 1000 llums a l'escena
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 1.5);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
@@ -434,7 +434,9 @@ void Init(App* app)
 
     CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
     
-    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube2");
+    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(-20, 0, 0)), "Cube2");
+
+    CreateEntity(app, cube3, VP, glm::translate(glm::vec3(-70, 0, 0)), "Cube3");
 
     CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), "Test");
 
@@ -582,7 +584,7 @@ void Gui(App* app)
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
             if (ImGui::CollapsingHeader("Relief Mapping"))
             {
-                ImGui::SliderFloat("Depth Strength", &app->depthIntensity, 0.0f, 0.2f, "%.3f");
+                ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
             }
         }
         ImGui::Separator();
@@ -931,10 +933,10 @@ void Render(App* app)
 
             for (const auto& entity : app->entities)
             {
-                // Determine which shader to use
+                // Determinar which shader se usa
                 Program* program = &app->programs[app->geometryProgramIdx];
                 if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&
-                    entity.name == "Cube" || entity.name == "Cube2")
+                    entity.name == "Cube" || entity.name == "Cube2" || entity.name == "Cube3")
                 {
                     program = &app->programs[app->reliefMappingIdx];
                 }
@@ -962,38 +964,31 @@ void Render(App* app)
                     u32 matIdx = model.materialIdx[i];
                     Material& mat = app->materials[matIdx];
 
-                    // Bind textures
-                    // 1. Albedo/diffuse
+
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
                     glUniform1i(glGetUniformLocation(program->handle, "uDiffuse"), 0);
 
-                    // Bind normal map if available
-                    if (mat.normalsTextureIdx != 0)  // Asumiendo que 0 significa "no texture" en tu sistema
+                    if (mat.normalsTextureIdx != 0)
                     {
                         glActiveTexture(GL_TEXTURE1);
                         glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
                         glUniform1i(glGetUniformLocation(program->handle, "uNormalMap"), 1);
                     }
 
-                    // Special handling for normal+height mapped objects
                     if (program == &app->programs[app->reliefMappingIdx])
                     {
-                        // 3. Height map (separate texture)
                         glActiveTexture(GL_TEXTURE2);
                         glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
                         glUniform1i(glGetUniformLocation(program->handle, "uHeightMap"), 2);
 
-                        // Additional uniforms
                         glUniform3fv(glGetUniformLocation(program->handle, "uViewPos"), 1, glm::value_ptr(app->worldCamera.position));
-                        glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->depthIntensity );
+                        glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->reliefIntensity );
                     }
 
-                    // Draw the submesh
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
 
-                    // Cleanup
                     glBindTexture(GL_TEXTURE_2D, 0);
                 }
 
@@ -1001,7 +996,6 @@ void Render(App* app)
                 glUseProgram(0);
             }
 
-            // Cleanup and render to screen
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
             RenderScreenFillQuad(app, app->primaryFBO);
