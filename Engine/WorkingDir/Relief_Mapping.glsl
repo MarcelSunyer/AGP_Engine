@@ -57,14 +57,14 @@ layout(location = 0) out vec4 oColor;
 
 // Función de Parallax Occlusion Mapping con interpolación
 vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
-    const float minLayers = 12.0;
-    const float maxLayers = 48.0;
+    const float minLayers = 8.0;  // Reducido para mejor performance
+const float maxLayers = 32.0;
 
     float ndotv = clamp(dot(vec3(0.0, 0.0, 1.0), normalize(viewDirTS)), 0.0, 1.0);
     float numLayers = mix(maxLayers, minLayers, ndotv);
 
     float layerDepth = 1.0 / numLayers;
-    vec2 deltaTexCoords = viewDirTS.xy * 0.03 / viewDirTS.z / numLayers;
+    vec2 deltaTexCoords = viewDirTS.xy * uHeightScale / viewDirTS.z / numLayers;
 
     vec2 currentTexCoords = texCoords;
     float currentDepth = 0.0;
@@ -123,6 +123,9 @@ void main() {
 
     // Debug normal
     // oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
+
+    // Debug Heigh
+    //oColor = vec4(texture(uHeightMap, displacedTexCoords).rrr, 1.0);
 }
 
 #endif

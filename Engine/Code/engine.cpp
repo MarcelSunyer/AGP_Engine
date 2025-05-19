@@ -289,7 +289,7 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glUniform1f(glGetUniformLocation(program.handle, "uFar"), 1000.0f);
     glUniform1i(glGetUniformLocation(program.handle, "uViewMode"), static_cast<int>(app->bufferViewMode));
     glUniform1i(glGetUniformLocation(program.handle, "uShowDepth"), app->showDepthOverlay ? 1 : 0);
-    glUniform1f(glGetUniformLocation(program.handle, "uDepthIntensity"), app->depthIntensity);
+    glUniform1f(glGetUniformLocation(program.handle, "uHeightScale"), app->depthIntensity);
 
     // Render quad
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
@@ -578,7 +578,7 @@ void Gui(App* app)
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
             if (ImGui::CollapsingHeader("Relief Mapping"))
             {
-                ImGui::SliderFloat("Depth Strength", &app->reliefStrength, 0.0f, 0.2f, "%.3f");
+                ImGui::SliderFloat("Depth Strength", &app->depthIntensity, 0.0f, 0.2f, "%.3f");
             }
         }
         ImGui::Separator();
@@ -978,11 +978,11 @@ void Render(App* app)
                         // 3. Height map (separate texture)
                         glActiveTexture(GL_TEXTURE2);
                         glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
-                        glUniform1i(glGetUniformLocation(program->handle, "uHeightMap"), 2); // Changed from uDepthMap
+                        glUniform1i(glGetUniformLocation(program->handle, "uHeightMap"), 2);
 
                         // Additional uniforms
                         glUniform3fv(glGetUniformLocation(program->handle, "uViewPos"), 1, glm::value_ptr(app->worldCamera.position));
-                        glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->depthIntensity); // Renamed from reliefStrength
+                        glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->depthIntensity );
                     }
 
                     // Draw the submesh
