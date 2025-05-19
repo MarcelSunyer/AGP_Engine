@@ -38,6 +38,46 @@ void main() {
 
 #elif defined(FRAGMENT)
 
+
+struct Light {
+    int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
+layout(binding = 0) uniform GlobalParams {
+    vec3 uCameraPosition;
+    int uLightCount;
+    Light uLight[128];
+};
+
+vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
+    vec3 lightDir = normalize(light.position - position);
+    float distance = length(light.position - position);
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
+
+    vec3 ambient = light.color * 0.1;
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff;
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 1.5), 5.0);
+    vec3 specular = light.color * spec * 0.5;
+
+    return (ambient + diffuse + specular) * attenuation;
+}
+
+vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
+    vec3 lightDir = normalize(-light.direction);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff;
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    vec3 specular = light.color * spec * 0.5;
+    return diffuse + specular;
+}
+
+
 in Data {
     vec2 texCoords;
     vec3 tangentFragPos;
@@ -53,39 +93,37 @@ uniform float uHeightScale;
 layout(location = 0) out vec4 oColor;
 
 vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
-    const float minLayers = 8.0; 
-    const float maxLayers = 32.0;
+    const float minLayers = 32.0; 
+    const float maxLayers = 64.0;
 
     float ndotv = clamp(dot(vec3(0.0, 0.0, 1.0), normalize(viewDirTS)), 0.0, 1.0);
     float numLayers = mix(maxLayers, minLayers, ndotv);
 
     float layerDepth = 1.0 / numLayers;
-    vec2 deltaTexCoords = viewDirTS.xy * uHeightScale / viewDirTS.z / numLayers;
+    vec2 deltaTexCoords = viewDirTS.xy * uHeightScale / (viewDirTS.z * numLayers);
 
     vec2 currentTexCoords = texCoords;
-    float currentDepth = 0.0;
-    float depthFromMap = texture(uHeightMap, currentTexCoords).r;
+    float currentLayerDepth = 0.0;
+    float currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
 
-    vec2 prevTexCoords = currentTexCoords;
-    float prevDepthMap = depthFromMap;
-
+    // Ray-marching loop
     for (int i = 0; i < int(numLayers); ++i) {
-        if (currentDepth >= depthFromMap)
+        if (currentLayerDepth >= currentDepthMapValue)
             break;
 
-        prevTexCoords = currentTexCoords;
-        prevDepthMap = depthFromMap;
-
         currentTexCoords -= deltaTexCoords;
-        currentDepth += layerDepth;
-        depthFromMap = texture(uHeightMap, currentTexCoords).r;
+        currentLayerDepth += layerDepth;
+        currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
     }
 
-    float afterDepth = depthFromMap - currentDepth;
-    float beforeDepth = prevDepthMap - (currentDepth - layerDepth);
-    float weight = beforeDepth / (beforeDepth - afterDepth);
+    // Fix propuesto: Muestreo adicional para interpolación
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+    float beforeDepth = texture(uHeightMap, prevTexCoords).r - (currentLayerDepth - layerDepth);
+    float afterDepth = currentDepthMapValue - currentLayerDepth;
 
-    vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, clamp(weight, 0.0, 1.0));
+    // Interpolación lineal mejorada
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, weight);
 
     return finalTexCoords;
 }
@@ -107,7 +145,7 @@ void main() {
 
     //Todo
     vec3 lightDir = normalize(vec3(0.5, 1., 1.0));
-    float diff = max(dot(normalWS, lightDir), 0.2);
+    float diff = max(dot(normalWS, lightDir), 0.1);
 
     oColor = vec4(albedo * diff, 1.0);
 

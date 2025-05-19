@@ -9,6 +9,6 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd basecolor.jpg
-map_Kn normal.jpg
-map_Bump -bm 0.05 height.jpg 
+map_Kd tile1.png
+map_Kn normal_.png
+map_Bump -bm 0.05 height_.png 
