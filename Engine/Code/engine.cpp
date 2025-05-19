@@ -14,7 +14,7 @@
 #include <stb_image_write.h>
 
 
-void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition, std::string name)
+void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition, std::string name, EntityType type)
 {
     Entity entity;
     AlignHead(app->entityUBO, app->uniformBlockAlignment);
@@ -23,6 +23,7 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
     entity.worldMatrix = aPosition;
     entity.modelIndex = aModelIndx;
     entity.name = name;
+    entity.type = type;
     glm::mat4 normalMatrix = glm::transpose(glm::inverse(aPosition));
     PushMat4(app->entityUBO, entity.worldMatrix);
     PushMat4(app->entityUBO, normalMatrix);
@@ -32,13 +33,13 @@ void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const gl
 
     app->entities.push_back(entity);
 }
-void CreateLight(App* app, LightType light, vec3 color, vec3 position, float intensity)
+void CreateLight(App* app, LightType light, vec3 color, vec3 position, float intensity, int mode)
 {
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     if (light == LightType::Light_Directional)
     {
-        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity });
+        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity , mode});
     }
     else
     {
@@ -48,7 +49,7 @@ void CreateLight(App* app, LightType light, vec3 color, vec3 position, float int
         //Comentat ja que no me crea mes d'una esfera jiji
         //CreateEntity(app, app->sphereIdx, VP, sphereWorld);
 
-        app->lights.push_back({ light, color, vec3(0), position, intensity });
+        app->lights.push_back({ light, color, vec3(0), position, intensity, mode });
     }
 }
 
@@ -363,13 +364,15 @@ void TestParaMiquel(App* app)
         for (int z = -15; z < 15; ++z)
         {
             glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 15, 0.0f, z * 15), 2);
+            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 15, 0.0f, z * 15), 2, 1);
         }
     }
 }
 
 void Init(App* app)
 {
+    app->pgaType = 2;
+
     ExtensionsOpenGL(app);
 
     SetUpCamera(app);
@@ -426,33 +429,33 @@ void Init(App* app)
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //TestParaMiquel(app);  //Crea 1000 llums a l'escena
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 1);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 2);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 3);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
-    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube", EntityType::Relief_Mapping);
     
-    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(-20, 0, 0)), "Cube2");
+    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(-20, 0, 0)), "Cube2", EntityType::Relief_Mapping);
 
-    CreateEntity(app, cube3, VP, glm::translate(glm::vec3(-70, 0, 0)), "Cube3");
+    CreateEntity(app, cube3, VP, glm::translate(glm::vec3(-70, 0, 0)), "Cube3", EntityType::Relief_Mapping);
 
-    CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), "Test");
+    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)), "Cone", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, cone, VP, glm::translate(glm::vec3(-30, 0, 0)), "Cone");
+    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)), "Torus", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, torus, VP, glm::translate(glm::vec3(-30, 0, -30)), "Torus");
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere");
+    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey");
+    CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>(), "Plane", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>(), "Plane");
+    CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>(), "SkyBox", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, skyBox, VP, glm::identity<glm::mat4>(), "SkyBox");
-
-    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)), "Pikachu");
+    CreateEntity(app, app->pikachu, VP, glm::translate(glm::vec3(0, 0, 0)), "Pikachu", EntityType::Deferred_Rendering);
 
     UnmapBuffer(entityUBO);
 
@@ -474,75 +477,122 @@ void Gui(App* app)
         }
         ImGui::EndMainMenuBar();
     }
-
-    ImGui::Begin("Viewport");
+    ImGui::Begin("Delivery");
     {
-        ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-
-        GLuint textureID = app->primaryFBO.attachments[0].second;
-        if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO)
-        {
-            textureID = app->primaryFBO.attachments[0].second;
-        }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS)
-        {
-            textureID = app->primaryFBO.attachments[1].second;
-        }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION)
-        {
-            textureID = app->primaryFBO.attachments[2].second;
-        }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR)
-        {
-            textureID = app->primaryFBO.attachments[3].second;
-        }
-        else if (app->bufferViewMode == App::BUFFER_VIEW_DEPTH)
-        {
-            textureID = app->primaryFBO.depthHandle;
-        }
-
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
 
-        const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
+        const char* viewLabels[] = { "Opción 1", "Opción 2", "Opción 3" };
 
         {
             ImGuiStyle& style = ImGui::GetStyle();
-
             float size = ImGui::CalcTextSize(viewLabels[0]).x + style.FramePadding.x * 2.0f;
             float avail = ImGui::GetContentRegionAvail().x;
-
-            float off = (avail - size) * 0.4;
-
+            float off = (avail - size) * 0.4f;
             if (off > 0.0f)
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
         }
-        for (int i = 0; i <= 5; i++) {
-            bool isActive = (static_cast<int>(app->bufferViewMode) == i);
-            if (isActive) {
+
+        for (int i = 0; i < 3; i++)
+        {
+            bool isActive = (static_cast<int>(app->pgaType) == i + 1); // Comienza desde 1
+
+            if (isActive)
+            {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
             }
 
-
-            if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
-                app->bufferViewMode = static_cast<App::BufferViewMode>(i);
-                if (i != 0)
-                {
-                    app->showDepthOverlay = false;
-                }
+            if (ImGui::Button(viewLabels[i]))
+            {
+                app->pgaType = i + 1; // Asigna 1, 2 o 3
             }
-            if (isActive) {
+
+            if (isActive)
+            {
                 ImGui::PopStyleColor();
             }
-            if (i < 5)
+
+            if (i < 2) // Añade un poco de espacio entre los botones
             {
                 ImGui::SameLine();
             }
         }
+
         ImGui::PopStyleVar();
     }
     ImGui::End();
+    
+    if (app->pgaType == 1)
+    {
+        ImGui::Begin("Viewport");
+        {
+            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
+            GLuint textureID = app->primaryFBO.attachments[0].second;
+            if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO)
+            {
+                textureID = app->primaryFBO.attachments[0].second;
+            }
+            else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS)
+            {
+                textureID = app->primaryFBO.attachments[1].second;
+            }
+            else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION)
+            {
+                textureID = app->primaryFBO.attachments[2].second;
+            }
+            else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR)
+            {
+                textureID = app->primaryFBO.attachments[3].second;
+            }
+            else if (app->bufferViewMode == App::BUFFER_VIEW_DEPTH)
+            {
+                textureID = app->primaryFBO.depthHandle;
+            }
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+
+            const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
+            {
+                ImGuiStyle& style = ImGui::GetStyle();
+
+                float size = ImGui::CalcTextSize(viewLabels[0]).x + style.FramePadding.x * 2.0f;
+                float avail = ImGui::GetContentRegionAvail().x;
+
+                float off = (avail - size) * 0.4;
+
+                if (off > 0.0f)
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
+            }
+            for (int i = 0; i <= 5; i++) {
+                bool isActive = (static_cast<int>(app->bufferViewMode) == i);
+                if (isActive) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
+                }
+
+
+                if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
+                    app->bufferViewMode = static_cast<App::BufferViewMode>(i);
+                    if (i != 0)
+                    {
+                        app->showDepthOverlay = false;
+                    }
+                }
+                if (isActive) {
+                    ImGui::PopStyleColor();
+                }
+                if (i < 5)
+                {
+                    ImGui::SameLine();
+                }
+            }
+            ImGui::PopStyleVar();
+        }
+        ImGui::End();
+    }
+
+   
     ImGui::End();
+
     ImGui::Begin("Inspector");
     {
         if (ImGui::CollapsingHeader("Entities", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -551,18 +601,31 @@ void Gui(App* app)
 
             for (size_t i = 0; i < app->entities.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
-
+                app->entities[6].active == false;
                 glm::vec3 entityPosition = glm::vec3(app->entities[i].worldMatrix[3]);
 
                 if (app->entities[i].modelIndex == app->pikachu || app->entities[i].name == " " || app->entities[i].name == "SkyBox") {
-
+                    //No registra las entities
                 }
                 else {
-                    std::string label = "Geometry: " + app->entities[i].name;
-                    if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
-                        app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
-                        entityChanged = true;
+                    if (app->entities[i].type == EntityType::Deferred_Rendering && app->pgaType == 0)
+                    {
+                        std::string label = "Geometry: " + app->entities[i].name;
+                        if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
+                            app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
+                            entityChanged = true;
+                            
+                        }
                     }
+                    else if (app->entities[i].type == EntityType::Relief_Mapping && app->pgaType == 2)
+                    {
+                        std::string label = "Geometry: " + app->entities[i].name;
+                        if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
+                            app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
+                            entityChanged = true;
+                        }
+                    }
+
                 }
 
                 ImGui::PopID();
@@ -582,7 +645,8 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-            if (ImGui::CollapsingHeader("Relief Mapping"))
+           
+            if (ImGui::CollapsingHeader("Relief Mapping") || app->pgaType ==2)
             {
                 ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
             }
@@ -597,12 +661,12 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
-                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(0), 1.f);
+                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(0), 1.f, app->pgaType);
                 UpdateLights(app);
             }
             ImGui::SameLine();
             if (ImGui::Button("Add Point Light")) {
-                CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f);
+                CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f, app->pgaType);
                 UpdateLights(app);
             }
 
@@ -613,7 +677,7 @@ void Gui(App* app)
                     for (int z = -10; z < 10; ++z)
                     {
                         glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10);
+                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10, app->pgaType);
                     }
                 }
                 UpdateLights(app);
@@ -643,12 +707,19 @@ void Gui(App* app)
             {
                 ImGui::PushID(static_cast<int>(i));
                 Light& light = app->lights[i];
+                if (light.mode != app->pgaType)
+                {
+                    continue;
+                }
                 bool lightChanged = false;
 
                 ImGui::Separator();
+
                 ImGui::Text("Light %d", i + 1);
                 float intensity = light.intensity;
+
                 const char* lightTypes[] = { "Directional", "Point" };
+
                 int currentType = static_cast<int>(light.type);
                 if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
                 {
@@ -783,6 +854,41 @@ void CheckAndReloadShaders(App* app)
     }
 }
 
+void ActiveEntities(App* app, Entity* entity)
+{
+    if (app->pgaType == 1 && entity->type == EntityType::Deferred_Rendering)
+    {
+        entity->active = true;
+    }
+
+    if (app->pgaType == 2 && entity->type == EntityType::Relief_Mapping)
+    {
+        entity->active = true;
+    }
+
+    if (app->pgaType == 3 && entity->type == EntityType::Enviroment_Map)
+    {
+        entity->active = true;
+    }
+}
+
+void DisableEntities(App* app, Entity* entity)
+{
+    if (app->pgaType == 1 && !entity->type == EntityType::Deferred_Rendering)
+    {
+        entity->active = false;
+    }
+
+    if (app->pgaType == 2 && !entity->type == EntityType::Relief_Mapping)
+    {
+        entity->active = false;
+    }
+
+    if (app->pgaType == 3 && !entity->type == EntityType::Enviroment_Map)
+    {
+        entity->active = false;
+    }
+}
 void Update(App* app) {
     CheckAndReloadShaders(app);
 
@@ -855,6 +961,10 @@ void Update(App* app) {
             entity.worldMatrix = translation;
         }
 
+        ActiveEntities(app, &entity);
+
+        DisableEntities(app, &entity);
+
         glm::mat4 vpMatrix = VP * entity.worldMatrix;
         glm::mat4 normalMatrix = glm::transpose(glm::inverse(entity.worldMatrix));
 
@@ -870,20 +980,20 @@ void Update(App* app) {
 }
 
 void UpdateLights(App* app) {
-    const u32 sizePerLight = sizeof(int) + 3 * sizeof(vec4);
-    const u32 otherDataSize = sizeof(glm::vec3) + sizeof(int);
-    const u32 requiredSize = otherDataSize + static_cast<u32>(app->lights.size()) * sizePerLight;
-
-
-    if (requiredSize > app->maxUniformBufferSize) {
-        printf("Error: Light data exceeds maximum uniform buffer size! Required: %u, Max: %u", requiredSize, app->maxUniformBufferSize);
-        printf("\n");
-        if (app->globalUBO.size < requiredSize) {
-            UnmapBuffer(app->globalUBO);
-            app->globalUBO = CreateConstantBuffer(requiredSize);
+    // Contar solo las luces activas del modo actual
+    u32 activeLightCount = 0;
+    for (const auto& light : app->lights) {
+        if (light.mode == app->pgaType) {
+            ++activeLightCount;
         }
     }
-    else if (app->globalUBO.size < requiredSize) {
+
+    const u32 sizePerLight = sizeof(int) + 3 * sizeof(vec4); // type + color + dir + pos
+    const u32 otherDataSize = sizeof(glm::vec3) + sizeof(int); // cam pos + light count
+    const u32 requiredSize = otherDataSize + activeLightCount * sizePerLight;
+
+    // Redimensionar si hace falta
+    if (requiredSize > app->maxUniformBufferSize || app->globalUBO.size < requiredSize) {
         UnmapBuffer(app->globalUBO);
         app->globalUBO = CreateConstantBuffer(requiredSize);
     }
@@ -891,10 +1001,14 @@ void UpdateLights(App* app) {
     MapBuffer(app->globalUBO, GL_WRITE_ONLY);
     BindBuffer(app->globalUBO);
 
+    // Subir posición de cámara y número de luces activas
     PushVec3(app->globalUBO, app->worldCamera.position);
-    PushUInt(app->globalUBO, app->lights.size());
+    PushUInt(app->globalUBO, activeLightCount);
 
+    // Subir solo las luces del modo activo
     for (auto& light : app->lights) {
+        if (light.mode != app->pgaType) continue;
+
         AlignHead(app->globalUBO, 16);
         PushUInt(app->globalUBO, static_cast<int>(light.type));
         PushVec3(app->globalUBO, light.color * light.intensity);
@@ -905,6 +1019,7 @@ void UpdateLights(App* app) {
 
     UnmapBuffer(app->globalUBO);
 }
+
 
 void Render(App* app)
 {
@@ -933,6 +1048,10 @@ void Render(App* app)
 
             for (const auto& entity : app->entities)
             {
+                if (entity.active == false)
+                {
+                    continue;
+                }
                 // Determinar which shader se usa
                 Program* program = &app->programs[app->geometryProgramIdx];
                 if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&

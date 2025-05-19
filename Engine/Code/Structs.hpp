@@ -124,6 +124,12 @@ struct VertexBufferLayout {
     u8 stride;
 };
 
+enum EntityType
+{
+    Deferred_Rendering,
+    Relief_Mapping,
+    Enviroment_Map,
+};
 
 struct Entity {
 
@@ -132,6 +138,8 @@ struct Entity {
     u32 entityBufferOffset;
     u32 entityBufferSize;
     std::string name;
+    bool active;
+    EntityType type;
 };
 
 
@@ -185,9 +193,8 @@ struct Light
     vec3 direction;
     vec3 position;
     float intensity;
+    int mode;
 };
-
-
 
 struct FrameBuffer
 {
@@ -274,7 +281,6 @@ struct FrameBuffer
 
     void Resize(uint64_t width, uint64_t height)
     {
-        //Igualam a 0 pa que no peti al minimitzar
         if (width == _width && height == _height || height == 0 || width == 0)
             return;
 
@@ -361,6 +367,10 @@ struct App
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     bool showDepthOverlay = false;
     float reliefIntensity = 0.05f;
+
+    int pgaType;
+
+
 };
 
 #endif // !STRUCTS

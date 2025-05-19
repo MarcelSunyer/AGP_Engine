@@ -232,3 +232,25 @@ u32 LoadModel(App* app, const char* filename)
 
     return modelIdx;
 }
+void ActivateModel(App* app, u32 modelIndex)
+{
+    for (auto& entity : app->entities)
+    {
+        if (entity.modelIndex == modelIndex)
+        {
+            entity.active = true;
+        }
+    }
+}
+
+// Function to deactivate a loaded model
+void DeactivateModel(App* app, u32 modelIndex)
+{
+    for (auto& entity : app->entities)
+    {
+        if (entity.modelIndex == modelIndex)
+        {
+            entity.active = false;
+        }
+    }
+}
