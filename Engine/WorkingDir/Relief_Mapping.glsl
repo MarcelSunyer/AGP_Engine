@@ -1,6 +1,48 @@
-﻿in Data {
+﻿#ifdef RELIEF_MAPPING
+
+#if defined(VERTEX)
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 texCoords;
+layout(location = 3) in vec3 tangent;
+layout(location = 4) in vec3 bitangent;
+
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProj;
+uniform vec3 uViewPos;
+
+out Data {
     vec2 texCoords;
-    vec3 fragPos;
+    vec3 tangentFragPos;
+    vec3 tangentViewPos;
+    mat3 TBN;
+} VSOut;
+
+void main() {
+    // Calcular posición en mundo
+    vec3 fragPos = vec3(uModel * vec4(position, 1.0));
+    VSOut.texCoords = texCoords;
+
+    // Calcular matriz TBN
+    vec3 T = normalize(mat3(uModel) * tangent);
+    vec3 B = normalize(mat3(uModel) * bitangent);
+    vec3 N = normalize(mat3(uModel) * normal);
+    VSOut.TBN = mat3(T, B, N);
+    VSOut.TBN = transpose(VSOut.TBN);
+
+    // Posiciones en espacio tangente
+    VSOut.tangentFragPos = VSOut.TBN * fragPos;
+    VSOut.tangentViewPos = VSOut.TBN * uViewPos;
+
+    gl_Position = uProj * uView * vec4(fragPos, 1.0);
+}
+
+#elif defined(FRAGMENT)
+
+in Data {
+    vec2 texCoords;
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
@@ -9,64 +51,79 @@
 uniform sampler2D uDiffuse;
 uniform sampler2D uNormalMap;
 uniform sampler2D uHeightMap;
-uniform float uHeightScale = 0.05;  // Intensidad del height map
+uniform float uHeightScale;
 
 layout(location = 0) out vec4 oColor;
 
-// Parallax Mapping mejorado
-vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDir) { 
-    const float minLayers = 8.0;
-    const float maxLayers = 32.0;
-    float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.4));
-    
+// Función de Parallax Occlusion Mapping con interpolación
+vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
+    const float minLayers = 12.0;
+    const float maxLayers = 48.0;
+
+    float ndotv = clamp(dot(vec3(0.0, 0.0, 1.0), normalize(viewDirTS)), 0.0, 1.0);
+    float numLayers = mix(maxLayers, minLayers, ndotv);
+
     float layerDepth = 1.0 / numLayers;
-    vec2 deltaTexCoords = viewDir.xy * uHeightScale / (viewDir.z * numLayers);
-    
-    // Ray marching
+    vec2 deltaTexCoords = viewDirTS.xy * 0.03 / viewDirTS.z / numLayers;
+
     vec2 currentTexCoords = texCoords;
     float currentDepth = 0.0;
-    float depthFromMap = 1.0 - texture(uHeightMap, currentTexCoords).r;
-    
-    while(currentDepth < depthFromMap) {
+    float depthFromMap = texture(uHeightMap, currentTexCoords).r;
+
+    vec2 prevTexCoords = currentTexCoords;
+    float prevDepthMap = depthFromMap;
+
+    for (int i = 0; i < int(numLayers); ++i) {
+        if (currentDepth >= depthFromMap)
+            break;
+
+        prevTexCoords = currentTexCoords;
+        prevDepthMap = depthFromMap;
+
         currentTexCoords -= deltaTexCoords;
-        depthFromMap = 1.0 - texture(uHeightMap, currentTexCoords).r;
         currentDepth += layerDepth;
+        depthFromMap = texture(uHeightMap, currentTexCoords).r;
     }
-    
-    // Interpolación para suavizar
-    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+    // Interpolación suave entre los dos últimos pasos
     float afterDepth = depthFromMap - currentDepth;
-    float beforeDepth = 1.0 - texture(uHeightMap, prevTexCoords).r - (currentDepth - layerDepth);
-    float weight = afterDepth / (afterDepth - beforeDepth);
-    
-    return prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+    float beforeDepth = prevDepthMap - (currentDepth - layerDepth);
+    float weight = beforeDepth / (beforeDepth - afterDepth);
+
+    vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, clamp(weight, 0.0, 1.0));
+
+    return finalTexCoords;
 }
 
 void main() {
-    // 1. Calcular dirección de vista en espacio tangente
-    vec3 viewDir = normalize(FSIn.tangentViewPos - FSIn.tangentFragPos);
-    
-    // 2. Aplicar Parallax Occlusion Mapping
-    vec2 displacedTexCoords = ParallaxOcclusionMapping(FSIn.texCoords, viewDir);
-    if(displacedTexCoords.x < 0.0 || displacedTexCoords.x > 1.0 || 
-       displacedTexCoords.y < 0.0 || displacedTexCoords.y > 1.0)
+    // Dirección de vista en espacio tangente
+    vec3 viewDirTS = normalize(FSIn.tangentViewPos - FSIn.tangentFragPos);
+
+    // Aplicar Relief Mapping
+    vec2 displacedTexCoords = ParallaxOcclusionMapping(FSIn.texCoords, viewDirTS);
+
+    // Recorte si se sale del UV
+    if (displacedTexCoords.x < 0.0 || displacedTexCoords.x > 1.0 ||
+        displacedTexCoords.y < 0.0 || displacedTexCoords.y > 1.0)
         discard;
-    
-    // 3. Obtener normal desde el normal map (con corrección de espacio)
-    vec3 normalMap = texture(uNormalMap, displacedTexCoords).rgb * 2.0 - 1.0;
-    normalMap.g *= -1.0;  // Invertir canal Y si es necesario
-    vec3 worldNormal = normalize(FSIn.TBN * normalMap);
-    
-    // 4. Muestra de textura difusa
+
+    // Normal en espacio tangente y conversión a mundo
+    vec3 normalTS = texture(uNormalMap, displacedTexCoords).rgb * 1.0 - 2.0;
+    // normalTS.g *= -1.0; // Solo si tu normal map usa sistema Y-invertido
+    vec3 normalWS = normalize(FSIn.TBN * normalTS);
+
+    // Difusa
     vec3 albedo = texture(uDiffuse, displacedTexCoords).rgb;
-    
-    // 5. Iluminación básica (ejemplo con luz direccional)
-    vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5));
-    float diff = max(dot(worldNormal, lightDir), 0.2);  // 0.2 = luz ambiental
-    
-    // 6. Resultado final
+
+    // Iluminación simple direccional
+    vec3 lightDir = normalize(vec3(0.5, 1., 1.0));
+    float diff = max(dot(normalWS, lightDir), 0.2); // 0.2 = luz ambiente mínima
+
     oColor = vec4(albedo * diff, 1.0);
-    
-    // Opcional: Visualización de normales para debug
-    // oColor = vec4(worldNormal * 0.5 + 0.5, 1.0);
+
+    // Debug normal
+    // oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
 }
+
+#endif
+#endif

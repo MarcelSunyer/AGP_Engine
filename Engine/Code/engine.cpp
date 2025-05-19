@@ -929,7 +929,7 @@ void Render(App* app)
             {
                 // Determine which shader to use
                 Program* program = &app->programs[app->geometryProgramIdx];
-                if (app->programs[app->reliefMappingIdx].programName == "NORMAL_HEIGHT_MAPPING" &&
+                if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&
                     entity.name == "Cube") // Or your entity selection logic
                 {
                     program = &app->programs[app->reliefMappingIdx];
@@ -964,10 +964,13 @@ void Render(App* app)
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
                     glUniform1i(glGetUniformLocation(program->handle, "uDiffuse"), 0);
 
-                    // 2. Normal map (separate from height)
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-                    glUniform1i(glGetUniformLocation(program->handle, "uNormalMap"), 1); // Changed from uBump
+                    // Bind normal map if available
+                    if (mat.normalsTextureIdx != 0)  // Asumiendo que 0 significa "no texture" en tu sistema
+                    {
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+                        glUniform1i(glGetUniformLocation(program->handle, "uNormalMap"), 1);
+                    }
 
                     // Special handling for normal+height mapped objects
                     if (program == &app->programs[app->reliefMappingIdx])
