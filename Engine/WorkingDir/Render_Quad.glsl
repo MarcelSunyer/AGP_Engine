@@ -59,7 +59,7 @@ vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = light.color * diff;
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    float spec = pow(max(dot(viewDir, reflectDir),1.5), 5);
     vec3 specular = light.color * spec * 0.5;
 
     return (ambient + diffuse + specular) * attenuation;
