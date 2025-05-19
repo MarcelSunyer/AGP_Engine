@@ -384,6 +384,8 @@ void Init(App* app)
 
     u32 cube = LoadModel(app, "Cube/Cube.obj");
 
+    u32 cube2 = LoadModel(app, "Cube2/Cube.obj");
+
     app->pikachu = LoadModel(app, "Pikachu/Pikachu.obj");
 
     u32 planeIdx = LoadModel(app, "Plane/Plane.obj");
@@ -431,6 +433,8 @@ void Init(App* app)
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
     CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube");
+    
+    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube2");
 
     CreateEntity(app, test_1, VP, glm::translate(glm::vec3(0, 0, 0)), "Test");
 
@@ -930,7 +934,7 @@ void Render(App* app)
                 // Determine which shader to use
                 Program* program = &app->programs[app->geometryProgramIdx];
                 if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&
-                    entity.name == "Cube") // Or your entity selection logic
+                    entity.name == "Cube" || entity.name == "Cube2")
                 {
                     program = &app->programs[app->reliefMappingIdx];
                 }
