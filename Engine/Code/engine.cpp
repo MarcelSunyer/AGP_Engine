@@ -713,8 +713,6 @@ void Gui(App* app)
     }
 }
 
-
-
 void UpdateCameraVectors(Camera* camera) {
 
     glm::vec3 front;
@@ -907,100 +905,101 @@ void Render(App* app)
     switch (app->mode)
     {
     case Mode_TexturedQuad:
-    {
-
-    }break;
-    case Mode_Forward_Geometry:
-    {
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, app->primaryFBO.handle);
-
-        std::vector<GLuint> textures;
-        for (auto& it : app->primaryFBO.attachments)
         {
-            textures.push_back(it.second);
-        }
-        glDrawBuffers(textures.size(), textures.data());
 
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glViewport(0, 0, app->displaySize.x, app->displaySize.y);
-
-        Program& geometryProgram = app->programs[app->geometryProgramIdx];
-        glUseProgram(geometryProgram.handle);
-
-        glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
-
-        for (const auto& entity : app->entities)
+        }break;
+        case Mode_Forward_Geometry:
         {
-            // Decide qué shader usar
-            Program* program = &app->programs[app->geometryProgramIdx];
-            if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&
-                entity.name == "Cube") // Aquí puedes cambiar por una lógica más flexible si quieres
+            glBindFramebuffer(GL_FRAMEBUFFER, app->primaryFBO.handle);
+
+            // Set up draw buffers
+            std::vector<GLuint> textures;
+            for (auto& it : app->primaryFBO.attachments)
             {
-                program = &app->programs[app->reliefMappingIdx];
+                textures.push_back(it.second);
             }
+            glDrawBuffers(textures.size(), textures.data());
 
-            glUseProgram(program->handle);
+            // Clear buffers
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
 
-            // Matrices y cámara
-            glUniformMatrix4fv(glGetUniformLocation(program->handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
-            glUniformMatrix4fv(glGetUniformLocation(program->handle, "uView"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.viewMatrix));
-            glUniformMatrix4fv(glGetUniformLocation(program->handle, "uProj"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.projectionMatrix));
-            glUniform3fv(glGetUniformLocation(program->handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
-
-            glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
-            glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
-
-            Model& model = app->models[entity.modelIndex];
-            Mesh& mesh = app->meshes[model.meshIdx];
-
-            for (size_t i = 0; i < mesh.submeshes.size(); ++i)
+            for (const auto& entity : app->entities)
             {
-                GLuint vao = FindVao(mesh, i, *program);
-                glBindVertexArray(vao);
-
-                u32 matIdx = model.materialIdx[i];
-                Material& mat = app->materials[matIdx];
-
-                // Textura difusa
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
-                glUniform1i(glGetUniformLocation(program->handle, "uDiffuse"), 0);
-
-                // Mapa de normales
-                glActiveTexture(GL_TEXTURE1);
-                glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-                glUniform1i(glGetUniformLocation(program->handle, "uBump"), 1);
-
-                if (program == &app->programs[app->reliefMappingIdx])
+                // Determine which shader to use
+                Program* program = &app->programs[app->geometryProgramIdx];
+                if (app->programs[app->reliefMappingIdx].programName == "NORMAL_HEIGHT_MAPPING" &&
+                    entity.name == "Cube") // Or your entity selection logic
                 {
-                    glActiveTexture(GL_TEXTURE2);
-                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
-                    glUniform1i(glGetUniformLocation(program->handle, "uDepthMap"), 2); // <-- nombre corregido
-
-                    glUniform3fv(glGetUniformLocation(program->handle, "uViewPos"), 1, glm::value_ptr(app->worldCamera.position));
-                    glUniform1f(glGetUniformLocation(program->handle, "uStrength"), app->reliefStrength);
+                    program = &app->programs[app->reliefMappingIdx];
                 }
 
-                Submesh& submesh = mesh.submeshes[i];
-                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
+                glUseProgram(program->handle);
 
-                glBindTexture(GL_TEXTURE_2D, 0);
+                // Matrices and camera
+                glUniformMatrix4fv(glGetUniformLocation(program->handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
+                glUniformMatrix4fv(glGetUniformLocation(program->handle, "uView"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.viewMatrix));
+                glUniformMatrix4fv(glGetUniformLocation(program->handle, "uProj"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.projectionMatrix));
+                glUniform3fv(glGetUniformLocation(program->handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
+
+                // Bind UBOs
+                glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
+                glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
+
+                Model& model = app->models[entity.modelIndex];
+                Mesh& mesh = app->meshes[model.meshIdx];
+
+                for (size_t i = 0; i < mesh.submeshes.size(); ++i)
+                {
+                    GLuint vao = FindVao(mesh, i, *program);
+                    glBindVertexArray(vao);
+
+                    u32 matIdx = model.materialIdx[i];
+                    Material& mat = app->materials[matIdx];
+
+                    // Bind textures
+                    // 1. Albedo/diffuse
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
+                    glUniform1i(glGetUniformLocation(program->handle, "uDiffuse"), 0);
+
+                    // 2. Normal map (separate from height)
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+                    glUniform1i(glGetUniformLocation(program->handle, "uNormalMap"), 1); // Changed from uBump
+
+                    // Special handling for normal+height mapped objects
+                    if (program == &app->programs[app->reliefMappingIdx])
+                    {
+                        // 3. Height map (separate texture)
+                        glActiveTexture(GL_TEXTURE2);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
+                        glUniform1i(glGetUniformLocation(program->handle, "uHeightMap"), 2); // Changed from uDepthMap
+
+                        // Additional uniforms
+                        glUniform3fv(glGetUniformLocation(program->handle, "uViewPos"), 1, glm::value_ptr(app->worldCamera.position));
+                        glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->depthIntensity); // Renamed from reliefStrength
+                    }
+
+                    // Draw the submesh
+                    Submesh& submesh = mesh.submeshes[i];
+                    glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
+
+                    // Cleanup
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                }
+
+                glBindVertexArray(0);
+                glUseProgram(0);
             }
 
-            glBindVertexArray(0);
+            // Cleanup and render to screen
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
+            RenderScreenFillQuad(app, app->primaryFBO);
         }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glUseProgram(0);
-        RenderScreenFillQuad(app, app->primaryFBO);
-    }
-    break;
+        break;
 
     default:;
     }
