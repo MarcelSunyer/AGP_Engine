@@ -459,7 +459,7 @@ void Init(App* app)
 
     UnmapBuffer(entityUBO);
 
-    app->mode = Mode_Forward_Geometry;
+    app->mode = Mode_Deferred_Geometry;
 
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
     UpdateLights(app);
