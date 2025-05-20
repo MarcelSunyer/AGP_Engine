@@ -1025,11 +1025,11 @@ void Render(App* app)
 {
     switch (app->mode)
     {
-    case Mode_TexturedQuad:
+    case Mode_Forward_Geometry:
         {
 
         }break;
-        case Mode_Forward_Geometry:
+        case Mode_Deferred_Geometry:
         {
             glBindFramebuffer(GL_FRAMEBUFFER, app->primaryFBO.handle);
 

@@ -80,8 +80,8 @@ struct Program
 
 enum Mode
 {
-    Mode_TexturedQuad,
     Mode_Forward_Geometry,
+    Mode_Deferred_Geometry,
     Mode_Count
 };
 
