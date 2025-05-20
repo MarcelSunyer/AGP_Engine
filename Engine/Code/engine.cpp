@@ -409,7 +409,7 @@ void Init(App* app)
     //app->sphereIdx = LoadModel(app, "Sphere/Sphere_Light.obj");
 
     u32 test_1 = LoadModel(app, "Test/Entity_test.obj");
-
+    app->forwardProgramIdx = LoadProgram(app, "FORWARD.glsl", "FORWARD");
     app->geometryProgramIdx = LoadProgram(app, "RENDER_GEOMETRY.glsl", "RENDER_GEOMETRY");
     app->patrickTextureUniform = glGetUniformLocation(app->programs[app->geometryProgramIdx].handle, "uTexture");
 
@@ -460,10 +460,32 @@ void Init(App* app)
     UnmapBuffer(entityUBO);
 
     app->mode = Mode_Deferred_Geometry;
+    app->useForwardRendering = false;
 
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
     UpdateLights(app);
 }
+
+// Helper function for the toggle button
+static void ToggleButton(const char* str_id, bool* v) {
+
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    float height = ImGui::GetFrameHeight();
+    float width = height * 1.55f;
+    float radius = height * 0.50f;
+
+    if (ImGui::InvisibleButton(str_id, ImVec2(width, height)))
+        *v = !*v;
+
+    ImU32 col_bg = ImGui::IsItemHovered() ?
+        (*v ? IM_COL32(165, 231, 88, 255) : IM_COL32(198, 198, 198, 255)) :
+        (*v ? IM_COL32(145, 211, 68, 255) : IM_COL32(218, 218, 218, 255));
+
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    draw_list->AddCircleFilled(ImVec2(*v ? (p.x + width - radius) : (p.x + radius), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+}
+
 void Gui(App* app)
 {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -788,6 +810,16 @@ void Gui(App* app)
         ImGui::End();
 
     }
+
+    ImGui::Begin("Rendering Mode");
+    {
+        const char* modes[] = { "Deferred", "Forward" };
+        int currentMode = static_cast<int>(app->useForwardRendering);
+        if (ImGui::Combo("Rendering Mode", &currentMode, modes, IM_ARRAYSIZE(modes))) {
+            app->useForwardRendering = (currentMode == 1);
+        }
+    }
+    ImGui::End();
 }
 
 void UpdateCameraVectors(Camera* camera) {
@@ -890,6 +922,9 @@ void DisableEntities(App* app, Entity* entity)
     }
 }
 void Update(App* app) {
+
+    app->mode = app->useForwardRendering ? Mode_Forward_Geometry : Mode_Deferred_Geometry;
+
     CheckAndReloadShaders(app);
 
     if (app->input.mouseButtons[LEFT] == BUTTON_PRESS) {
@@ -1027,6 +1062,78 @@ void Render(App* app)
     {
     case Mode_Forward_Geometry:
         {
+            // Bind default framebuffer (screen)
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            // Clear buffers
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, app->displaySize.x, app->displaySize.y);
+
+            // Enable depth testing
+            glEnable(GL_DEPTH_TEST);
+
+            // Render all entities with forward lighting
+            for (const auto& entity : app->entities)
+            {
+                if (!entity.active) continue;
+
+                Program& forwardProgram = app->programs[app->geometryProgramIdx]; // Use existing program
+                glUseProgram(forwardProgram.handle);
+
+                // Set matrices
+                glm::mat4 modelMatrix = entity.worldMatrix;
+                glm::mat4 viewMatrix = app->worldCamera.viewMatrix;
+                glm::mat4 projectionMatrix = app->worldCamera.projectionMatrix;
+
+                glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uModel"), 1, GL_FALSE, glm::value_ptr(modelMatrix));
+                glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uView"), 1, GL_FALSE, glm::value_ptr(viewMatrix));
+                glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uProj"), 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
+                // Set camera position
+                glUniform3fv(glGetUniformLocation(forwardProgram.handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
+
+                // Bind UBOs
+                glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
+                glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
+
+                // Get model and mesh data
+                Model& model = app->models[entity.modelIndex];
+                Mesh& mesh = app->meshes[model.meshIdx];
+
+                // Render submeshes
+                for (size_t i = 0; i < mesh.submeshes.size(); ++i)
+                {
+                    GLuint vao = FindVao(mesh, i, forwardProgram);
+                    glBindVertexArray(vao);
+
+                    // Material properties
+                    u32 matIdx = model.materialIdx[i];
+                    Material& mat = app->materials[matIdx];
+
+                    // Bind textures
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uAlbedoTexture"), 0);
+
+                    if (mat.normalsTextureIdx != 0)
+                    {
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+                        glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalTexture"), 1);
+                    }
+
+                    // Draw call
+                    Submesh& submesh = mesh.submeshes[i];
+                    glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
+
+                    // Cleanup
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                }
+
+                glBindVertexArray(0);
+            }
+            glUseProgram(0);
 
         }break;
         case Mode_Deferred_Geometry:

@@ -315,6 +315,7 @@ struct App
     // program indices
     u32 texturedGeometryProgramIdx;
     u32 geometryProgramIdx;
+    u32 forwardProgramIdx;
     u32 reliefMappingIdx;
 
     //Modelo 3D cargado
@@ -370,7 +371,8 @@ struct App
 
     int pgaType;
 
-
+    //TODO: No se si  esto de arriba cumple la misma función ^^^
+    bool useForwardRendering; 
 };
 
 #endif // !STRUCTS
