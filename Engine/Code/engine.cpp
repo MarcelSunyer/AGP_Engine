@@ -310,7 +310,7 @@ void SetUpCamera(App* app)
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.yaw = -90.0f;
     app->worldCamera.pitch = -30.0f;
-    app->worldCamera.movementSpeed = 40.0f;
+    app->worldCamera.movementSpeed = 150.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
     UpdateCameraVectors(&app->worldCamera);

@@ -94,7 +94,6 @@ uniform sampler2D uNormalMap;
 uniform sampler2D uHeightMap;
 uniform float uHeightScale;
 
-
 layout(location = 0) out vec4 oColor;
 
 vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
