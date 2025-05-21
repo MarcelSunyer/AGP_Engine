@@ -43,6 +43,7 @@ struct Light {
     vec3 color;
     vec3 direction;
     vec3 position;
+    float intensity;
 };
 
 layout(binding = 0) uniform GlobalParams {
@@ -98,13 +99,29 @@ vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir)
     return diffuse + specular;
 }
 
-vec3 CalcLighting(Light light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo)
-{
-    if(light.type == 0) { // Directional
-        return CalcDirLight(light, normal, viewDir) * albedo;
-    } else { // Point
-        return CalcPointLight(light, normal, fragPos, viewDir) * albedo;
+vec3 CalculateLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedo) {
+    // Dirección luz y distancia
+    vec3 lightDir = light.type == 0 ? 
+        normalize(-light.direction) : 
+        normalize(light.position - fragPos);
+    
+    // Atenuación
+    float attenuation = 1.0;
+    if (light.type != 0) {
+        float distance = length(light.position - fragPos);
+        attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * (distance * distance));
     }
+    
+    // Difuso
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * diff * albedo;
+    
+    // Especular (Blinn-Phong simplificado)
+    vec3 halfwayDir = normalize(lightDir + viewDir); 
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+    vec3 specular = light.color * spec * 0.5;
+    
+    return (diffuse + specular) * attenuation * light.intensity;
 }
 
 void main()
@@ -120,13 +137,12 @@ void main()
     }
 
     vec3 viewDir = normalize(uCameraPosition - vPosition);
-    vec3 result = vec3(0.1) * albedo; // Global ambient
-
-    // Accumulate lighting from all lights
+    vec3 result = vec3(0.1) * albedo; // Ambient
+    
     for(int i = 0; i < uLightCount; ++i) {
-        result += CalcLighting(uLight[i], normal, vPosition, viewDir, albedo);
+        result += CalculateLight(uLight[i], normal, vPosition, viewDir, albedo);
     }
-
+    
     // Gamma correction
     result = pow(result, vec3(1.0/2.2));
     oColor = vec4(result, 1.0);

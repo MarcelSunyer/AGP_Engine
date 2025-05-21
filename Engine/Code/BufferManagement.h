@@ -38,5 +38,6 @@ void PushAlignedData(Buffer& buffer, const void* data, u32 size, u32 alignment);
 #define PushVec4(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
 #define PushMat3(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
 #define PushMat4(buffer, value) PushAlignedData(buffer, value_ptr(value), sizeof(value), sizeof(vec4))
+#define PushFloat(buffer, value) PushAlignedData(buffer, &value, sizeof(float), 4)
 
 #endif // BUFFER_MANAGEMENT_H
