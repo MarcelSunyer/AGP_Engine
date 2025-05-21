@@ -655,8 +655,21 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
-            ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 0.1f, 1.0f, 100.0f);
+
+            ImGui::Separator(); // Add a separator for better organization
+            ImGui::Text("Rotation (Degrees)");
+
+            if (ImGui::DragFloat("Yaw", &app->worldCamera.yaw, 1.0f, -360.0f, 360.0f)) {
+                app->worldCamera.updateCameraVectors();
+            }
+            if (ImGui::DragFloat("Pitch", &app->worldCamera.pitch, 1.0f, -89.0f, 89.0f)) {
+                app->worldCamera.updateCameraVectors();
+            }
+
+            ImGui::Separator();
+            ImGui::DragFloat("Speed", &app->worldCamera.movementSpeed, 1, .10f, 300.0f);
             ImGui::DragFloat("Sensitivity", &app->worldCamera.mouseSensitivity, 0.01f, 0.01f, 1.0f);
+            ImGui::Checkbox("Is Rotating", &app->worldCamera.isRotating);
         }
 
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {

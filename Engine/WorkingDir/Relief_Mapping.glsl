@@ -18,6 +18,7 @@ out Data {
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
+    vec3 worldFragPos; // Añadido
 } VSOut;
 
 void main() {
@@ -29,16 +30,19 @@ void main() {
     vec3 N = normalize(mat3(uModel) * normal);
     VSOut.TBN = mat3(T, B, N);
     VSOut.TBN = transpose(VSOut.TBN);
+   
 
     VSOut.tangentFragPos = VSOut.TBN * fragPos;
     VSOut.tangentViewPos = VSOut.TBN * uViewPos;
+    VSOut.worldFragPos = fragPos; // Añadido
 
     gl_Position = uProj * uView * vec4(fragPos, 1.0);
 }
 
 #elif defined(FRAGMENT)
 
-
+uniform mat4 uView;    // ← Declaración faltante
+uniform mat4 uProj; 
 struct Light {
     int type;
     vec3 color;
@@ -77,18 +81,19 @@ vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
     return diffuse + specular;
 }
 
-
 in Data {
     vec2 texCoords;
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
+    vec3 worldFragPos; // Añadido
 } FSIn;
 
 uniform sampler2D uDiffuse;
 uniform sampler2D uNormalMap;
 uniform sampler2D uHeightMap;
 uniform float uHeightScale;
+
 
 layout(location = 0) out vec4 oColor;
 
@@ -106,7 +111,6 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
     float currentLayerDepth = 0.0;
     float currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
 
-    // Ray-marching loop
     for (int i = 0; i < int(numLayers); ++i) {
         if (currentLayerDepth >= currentDepthMapValue)
             break;
@@ -116,14 +120,27 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
         currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
     }
 
-    // Fix propuesto: Muestreo adicional para interpolación
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float beforeDepth = texture(uHeightMap, prevTexCoords).r - (currentLayerDepth - layerDepth);
     float afterDepth = currentDepthMapValue - currentLayerDepth;
 
-    // Interpolación lineal mejorada
     float weight = afterDepth / (afterDepth - beforeDepth);
     vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, weight);
+
+    // Cálculo del desplazamiento 3D
+    // Calcular desplazamiento en espacio tangente y convertir a mundo
+    float totalLayerDepth = (currentLayerDepth - layerDepth) + weight * layerDepth;
+    float t = totalLayerDepth * uHeightScale;
+        vec3 displacementTS = viewDirTS * t; // Usar viewDirTS corregido
+    vec3 displacementWS = FSIn.TBN * displacementTS;
+
+    // Nueva posición del fragmento (en mundo)
+    vec3 newFragPos = FSIn.worldFragPos + displacementWS;
+
+    // Calcular profundidad corregida
+    vec4 viewPos = uView * vec4(newFragPos, 1.0);
+    vec4 clipPos = uProj * viewPos;
+    gl_FragDepth = (clipPos.z / clipPos.w) * 0.5 + 0.5; // Normalizar a [0, 1]
 
     return finalTexCoords;
 }
@@ -139,7 +156,7 @@ void main() {
 
     vec3 normalTS = texture(uNormalMap, displacedTexCoords).rgb * 1.0 - 2.0;
 
-    vec3 normalWS = normalize(FSIn.TBN * normalTS);
+    vec3 normalWS = normalize(FSIn.TBN * (normalTS * 2.0 - 1.0));
 
     vec3 albedo = texture(uDiffuse, displacedTexCoords).rgb;
 
