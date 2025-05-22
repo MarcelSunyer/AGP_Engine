@@ -380,7 +380,7 @@ struct App
 
     int pgaType;
 
-
+    bool isRotating = false;
 };
 
 #endif // !STRUCTS

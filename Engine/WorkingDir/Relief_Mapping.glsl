@@ -25,12 +25,14 @@ void main() {
     vec3 fragPos = vec3(uModel * vec4(position, 1.0));
     VSOut.texCoords = texCoords;
 
-    vec3 T = normalize(mat3(uModel) * tangent);
-    vec3 B = normalize(mat3(uModel) * bitangent);
-    vec3 N = normalize(mat3(uModel) * normal);
+    // Corregido: Usar matriz normal para transformaciones
+    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
+    vec3 T = normalize(normalMatrix * tangent);
+    vec3 B = normalize(normalMatrix * bitangent);
+    vec3 N = normalize(normalMatrix * normal);
+    
     VSOut.TBN = mat3(T, B, N);
-    VSOut.TBN = transpose(VSOut.TBN);
-   
+    VSOut.TBN = transpose(VSOut.TBN); // Matriz para convertir a espacio tangente
 
     VSOut.tangentFragPos = VSOut.TBN * fragPos;
     VSOut.tangentViewPos = VSOut.TBN * uViewPos;
@@ -120,8 +122,8 @@ void main() {
     vec3 albedo = texture(uDiffuse, displacedTexCoords).rgb;
 
     //Todo
-    vec3 lightDir = normalize(vec3(0.5, 1., 1.0));
-    float diff = max(dot(normalWS, lightDir), 0.1);
+    vec3 lightDir = normalize(vec3(2.5, 1.5, 1.0));
+    float diff = max(dot(normalWS, lightDir), 0.3);
 
     oColor = vec4(albedo * diff, 1.0);
 

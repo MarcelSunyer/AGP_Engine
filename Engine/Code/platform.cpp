@@ -1,4 +1,4 @@
-//
+﻿//
 // platform.cpp : This file contains the 'main' function. Program execution begins and ends there.
 // The platform layer is in charge to create the environment necessary so the engine disposes of what
 // it needs in order to create the application (e.g. window, graphics context, I/O, allocators, etc).
@@ -128,10 +128,10 @@ void OnGlfwCloseWindow(GLFWwindow* window)
 
 int main()
 {
-    App app         = {};
-    app.deltaTime   = 1.0f/60.0f;
+    App app = {};
+    app.deltaTime = 1.0f / 60.0f;
     app.displaySize = ivec2(WINDOW_WIDTH, WINDOW_HEIGHT);
-    app.isRunning   = true;
+    app.isRunning = true;
 
     glfwSetErrorCallback(OnGlfwError);
 
@@ -167,7 +167,7 @@ int main()
     glfwMakeContextCurrent(window);
 
     // Load all OpenGL functions using the glfw loader function
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         ELOG("Failed to initialize OpenGL context\n");
         return -1;
@@ -184,12 +184,67 @@ int main()
     //io.ConfigViewportsNoAutoMerge = true;
     //io.ConfigViewportsNoTaskBarIcon = true;
 
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
+    ImVec4* colors = ImGui::GetStyle().Colors;
+
+    colors[ImGuiCol_Text] = ImVec4(0.75f, 0.85f, 0.80f, 1.00f); 
+    colors[ImGuiCol_WindowBg] = ImVec4(0.05f, 0.08f, 0.08f, 0.95f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.07f, 0.10f, 0.10f, 0.92f); 
+    colors[ImGuiCol_PopupBg] = ImVec4(0.07f, 0.10f, 0.10f, 0.98f); 
+    colors[ImGuiCol_Border] = ImVec4(0.20f, 0.25f, 0.25f, 0.50f); 
+
+    colors[ImGuiCol_FrameBg] = ImVec4(0.15f, 0.20f, 0.20f, 0.90f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.25f, 0.35f, 0.35f, 0.95f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.35f, 0.45f, 0.45f, 1.00f);
+
+    colors[ImGuiCol_TitleBg] = ImVec4(0.08f, 0.12f, 0.12f, 0.90f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.15f, 0.22f, 0.22f, 0.95f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.03f, 0.06f, 0.06f, 0.40f);
+
+    colors[ImGuiCol_CheckMark] = ImVec4(0.30f, 0.70f, 0.60f, 1.00f);
+    colors[ImGuiCol_SliderGrab] = ImVec4(0.25f, 0.60f, 0.50f, 1.00f);
+    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.40f, 0.80f, 0.70f, 1.00f);
+
+    colors[ImGuiCol_Button] = ImVec4(0.20f, 0.30f, 0.30f, 0.95f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.30f, 0.40f, 0.40f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.40f, 0.50f, 0.50f, 1.00f); 
+
+    colors[ImGuiCol_Header] = ImVec4(0.20f, 0.50f, 0.40f, 0.70f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.30f, 0.65f, 0.55f, 0.85f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.40f, 0.80f, 0.70f, 1.00f);
+
+    colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.25f, 0.40f); 
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(0.28f, 0.38f, 0.38f, 0.70f);
+    colors[ImGuiCol_SeparatorActive] = ImVec4(0.38f, 0.48f, 0.48f, 1.00f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.18f, 0.25f, 0.25f, 0.15f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.28f, 0.38f, 0.38f, 0.60f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.38f, 0.48f, 0.48f, 0.85f);
+    colors[ImGuiCol_Tab] = ImVec4(0.08f, 0.12f, 0.12f, 0.80f); 
+    colors[ImGuiCol_TabHovered] = ImVec4(0.15f, 0.22f, 0.22f, 0.75f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.25f, 0.35f, 0.35f, 0.90f);
+    colors[ImGuiCol_TabUnfocused] = ImVec4(0.03f, 0.06f, 0.06f, 0.80f);
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.06f, 0.09f, 0.09f, 0.90f);
+    colors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.70f, 0.60f, 0.60f);
+    colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.05f, 0.08f, 0.08f, 1.00f);
+    colors[ImGuiCol_PlotLines] = ImVec4(0.30f, 0.70f, 0.60f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.40f, 0.80f, 0.70f, 1.00f);
+    colors[ImGuiCol_PlotHistogram] = ImVec4(0.30f, 0.70f, 0.60f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.40f, 0.80f, 0.70f, 1.00f);
+    colors[ImGuiCol_TextSelectedBg] = ImVec4(0.30f, 0.70f, 0.60f, 0.25f);
+    colors[ImGuiCol_DragDropTarget] = ImVec4(0.40f, 0.80f, 0.70f, 0.80f);
+    colors[ImGuiCol_NavHighlight] = ImVec4(0.30f, 0.70f, 0.60f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.40f, 0.80f, 0.70f, 0.60f);
+    colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.07f, 0.10f, 0.10f, 0.60f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.05f, 0.08f, 0.08f, 0.70f);
+
+
+    ImGuiStyle & style = ImGui::GetStyle();
+    style.WindowRounding = 5.0f;
+    style.FrameRounding = 3.0f;
+    style.PopupRounding = 5.0f;
+    style.ScrollbarRounding = 2.0f;
+    style.GrabRounding = 2.0f;
 
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-    ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         style.WindowRounding = 0.0f;
@@ -213,7 +268,7 @@ int main()
     GlobalFrameArenaMemory = (u8*)malloc(GLOBAL_FRAME_ARENA_SIZE);
 
     //Informacion de OpenGl
-    
+
     Init(&app);
 
     while (app.isRunning)
@@ -243,12 +298,12 @@ int main()
         // Transition input key/button states
         if (!ImGui::GetIO().WantCaptureKeyboard)
             for (u32 i = 0; i < KEY_COUNT; ++i)
-                if      (app.input.keys[i] == BUTTON_PRESS)   app.input.keys[i] = BUTTON_PRESSED;
+                if (app.input.keys[i] == BUTTON_PRESS)   app.input.keys[i] = BUTTON_PRESSED;
                 else if (app.input.keys[i] == BUTTON_RELEASE) app.input.keys[i] = BUTTON_IDLE;
 
         if (!ImGui::GetIO().WantCaptureMouse)
             for (u32 i = 0; i < MOUSE_BUTTON_COUNT; ++i)
-                if      (app.input.mouseButtons[i] == BUTTON_PRESS)   app.input.mouseButtons[i] = BUTTON_PRESSED;
+                if (app.input.mouseButtons[i] == BUTTON_PRESS)   app.input.mouseButtons[i] = BUTTON_PRESSED;
                 else if (app.input.mouseButtons[i] == BUTTON_RELEASE) app.input.mouseButtons[i] = BUTTON_IDLE;
 
         app.input.mouseDelta = glm::vec2(0.0f, 0.0f);

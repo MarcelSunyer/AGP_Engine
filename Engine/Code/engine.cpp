@@ -39,7 +39,7 @@ void CreateLight(App* app, LightType light, vec3 color, vec3 position, float int
 
     if (light == LightType::Light_Directional)
     {
-        app->lights.push_back({ light, color, vec3(1,0,0), position, intensity , mode});
+        app->lights.push_back({ light, color, position, position, intensity , mode});
     }
     else
     {
@@ -429,17 +429,18 @@ void Init(App* app)
     app->entityUBO = CreateConstantBuffer(app->maxUniformBufferSize);
 
     //TestParaMiquel(app);  //Crea 1000 llums a l'escena
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 1);
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 2);
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 5, 3);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 1);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 2);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(0, 0, 1), 2, 2);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 3);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
     glm::mat4 VP = app->worldCamera.projectionMatrix * app->worldCamera.viewMatrix;
 
-    CreateEntity(app, cube, VP, glm::translate(glm::vec3(30, 0, 0)), "Cube", EntityType::Relief_Mapping);
+    CreateEntity(app, cube, VP, glm::translate(glm::vec3(70, 0, 0)), "Cube", EntityType::Relief_Mapping);
     
-    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(-20, 0, 0)), "Cube2", EntityType::Relief_Mapping);
+    CreateEntity(app, cube2, VP, glm::translate(glm::vec3(0, 0, 0)), "Cube2", EntityType::Relief_Mapping);
 
     CreateEntity(app, cube3, VP, glm::translate(glm::vec3(-70, 0, 0)), "Cube3", EntityType::Relief_Mapping);
 
@@ -464,24 +465,35 @@ void Init(App* app)
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
     UpdateLights(app);
 }
+void ToggleButton(const char* str_id, bool* v)
+{
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    float height = ImGui::GetFrameHeight();
+    float width = height * 1.55f;
+    float radius = height * 0.50f;
+
+    if (ImGui::InvisibleButton(str_id, ImVec2(width, height)))
+        *v = !*v;
+    ImU32 col_bg;
+    if (ImGui::IsItemHovered())
+        col_bg = *v ? IM_COL32(145 + 20, 211, 68 + 20, 255) : IM_COL32(218 - 20, 218 - 20, 218 - 20, 255);
+    else
+        col_bg = *v ? IM_COL32(145, 211, 68, 255) : IM_COL32(218, 218, 218, 255);
+
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+    draw_list->AddCircleFilled(ImVec2(*v ? (p.x + width - radius) : (p.x + radius), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+}
 void Gui(App* app)
 {
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("New Scene")) {}
-            if (ImGui::MenuItem("Save Scene")) {}
-            if (ImGui::MenuItem("Exit")) { app->isRunning = false; }
-            ImGui::EndMenu();
-        }
-        ImGui::EndMainMenuBar();
-    }
     ImGui::Begin("Delivery");
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
 
-        const char* viewLabels[] = { "Opción 1", "Opción 2", "Opción 3" };
+        const char* viewLabels[] = { "Deferred Rendering", "Relief Mapping", "Environment Map" };
 
         {
             ImGuiStyle& style = ImGui::GetStyle();
@@ -494,8 +506,7 @@ void Gui(App* app)
 
         for (int i = 0; i < 3; i++)
         {
-            bool isActive = (static_cast<int>(app->pgaType) == i + 1); // Comienza desde 1
-
+            bool isActive = (static_cast<int>(app->pgaType) == i + 1);
             if (isActive)
             {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
@@ -528,66 +539,60 @@ void Gui(App* app)
             ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
             GLuint textureID = app->primaryFBO.attachments[0].second;
-            if (app->bufferViewMode == App::BUFFER_VIEW_ALBEDO)
-            {
-                textureID = app->primaryFBO.attachments[0].second;
-            }
-            else if (app->bufferViewMode == App::BUFFER_VIEW_NORMALS)
-            {
-                textureID = app->primaryFBO.attachments[1].second;
-            }
-            else if (app->bufferViewMode == App::BUFFER_VIEW_POSITION)
-            {
-                textureID = app->primaryFBO.attachments[2].second;
-            }
-            else if (app->bufferViewMode == App::BUFFER_VIEW_VIEWDIR)
-            {
-                textureID = app->primaryFBO.attachments[3].second;
-            }
-            else if (app->bufferViewMode == App::BUFFER_VIEW_DEPTH)
-            {
-                textureID = app->primaryFBO.depthHandle;
+            switch (app->bufferViewMode) {
+            case App::BUFFER_VIEW_ALBEDO:
+                textureID = app->primaryFBO.attachments[0].second; break;
+            case App::BUFFER_VIEW_NORMALS:
+                textureID = app->primaryFBO.attachments[1].second; break;
+            case App::BUFFER_VIEW_POSITION:
+                textureID = app->primaryFBO.attachments[2].second; break;
+            case App::BUFFER_VIEW_VIEWDIR:
+                textureID = app->primaryFBO.attachments[3].second; break;
+            case App::BUFFER_VIEW_DEPTH:
+                textureID = app->primaryFBO.depthHandle; break;
+            default:
+                break;
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
 
-            const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir" ,"Depth" };
-            {
-                ImGuiStyle& style = ImGui::GetStyle();
+            const char* viewLabels[] = { "Main", "Albedo", "Normals", "Position", "ViewDir", "Depth" };
+            constexpr int buttonCount = 6;
+            constexpr float buttonWidth = 80.0f;
+            constexpr float buttonHeight = 30.0f;
+            constexpr float spacing = 8.0f;
 
-                float size = ImGui::CalcTextSize(viewLabels[0]).x + style.FramePadding.x * 2.0f;
-                float avail = ImGui::GetContentRegionAvail().x;
+            float totalWidth = buttonCount * buttonWidth + (buttonCount - 1) * spacing;
+            float availWidth = ImGui::GetContentRegionAvail().x;
+            float offsetX = (availWidth - totalWidth) * 0.5f;
+            if (offsetX > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
 
-                float off = (avail - size) * 0.4;
-
-                if (off > 0.0f)
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + off);
-            }
-            for (int i = 0; i <= 5; i++) {
+            for (int i = 0; i < buttonCount; ++i) {
                 bool isActive = (static_cast<int>(app->bufferViewMode) == i);
                 if (isActive) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.8f, 1.0f));
                 }
 
-
-                if (ImGui::Button(viewLabels[i], ImVec2(80, 30))) {
+                if (ImGui::Button(viewLabels[i], ImVec2(buttonWidth, buttonHeight))) {
                     app->bufferViewMode = static_cast<App::BufferViewMode>(i);
                     if (i != 0)
-                    {
                         app->showDepthOverlay = false;
-                    }
                 }
+
                 if (isActive) {
                     ImGui::PopStyleColor();
                 }
-                if (i < 5)
-                {
-                    ImGui::SameLine();
+
+                if (i < buttonCount - 1) {
+                    ImGui::SameLine(0.0f, spacing);
                 }
             }
+
             ImGui::PopStyleVar();
         }
         ImGui::End();
+
     }
 
    
@@ -646,9 +651,11 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
            
-            if (ImGui::CollapsingHeader("Relief Mapping") || app->pgaType ==2)
+            if (app->pgaType ==2)
             {
                 ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
+
+                ToggleButton("Speed Rotation", &app->isRotating);
             }
         }
         ImGui::Separator();
@@ -656,7 +663,7 @@ void Gui(App* app)
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
 
-            ImGui::Separator(); // Add a separator for better organization
+            ImGui::Separator();
             ImGui::Text("Rotation (Degrees)");
 
             if (ImGui::DragFloat("Yaw", &app->worldCamera.yaw, 1.0f, -360.0f, 360.0f)) {
@@ -672,50 +679,49 @@ void Gui(App* app)
             ImGui::Checkbox("Is Rotating", &app->worldCamera.isRotating);
         }
 
+        ImGui::Begin("Lights");
+        
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
                 CreateLight(app, LightType::Light_Directional, vec3(1), vec3(0), 1.f, app->pgaType);
                 UpdateLights(app);
             }
-            ImGui::SameLine();
+
             if (ImGui::Button("Add Point Light")) {
                 CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f, app->pgaType);
                 UpdateLights(app);
             }
-
-            if (ImGui::Button("Add 400 Point Lights"))
+            if (app->pgaType == 1)
             {
-                for (int x = -10; x < 10; ++x)
+
+                if (ImGui::Button("Add 400 Point Lights"))
                 {
-                    for (int z = -10; z < 10; ++z)
+                    for (int x = -10; x < 10; ++x)
                     {
-                        glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-                        CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10, app->pgaType);
+                        for (int z = -10; z < 10; ++z)
+                        {
+                            glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+                            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10, app->pgaType);
+                        }
                     }
-                }
-                UpdateLights(app);
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Delete Last 400 lights"))
-            {
-                if (!app->lights.empty()) {
-
-                    size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
-
-                    app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
-
                     UpdateLights(app);
                 }
+
+
+
+                if (ImGui::Button("Delete Last 400 lights"))
+                {
+                    if (!app->lights.empty()) {
+
+                        size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
+
+                        app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
+
+                        UpdateLights(app);
+                    }
+                }
             }
 
-            u32 sceneLights;
-            for (size_t i = 0; i < app->lights.size(); i++)
-            {
-                sceneLights = i;
-            }
-
-            ImGui::Text("Lights in scene:  %d", sceneLights);
             for (size_t i = 0; i < app->lights.size(); ++i)
             {
                 ImGui::PushID(static_cast<int>(i));
@@ -772,7 +778,6 @@ void Gui(App* app)
                     lightChanged = true;
                 }
 
-                ImGui::SameLine();
                 if (ImGui::Button("Delete"))
                 {
                     app->lights.erase(app->lights.begin() + i);
@@ -789,6 +794,7 @@ void Gui(App* app)
 
                 ImGui::PopID();
             }
+            ImGui::End();
         }
         ImGui::Separator();
 
@@ -972,6 +978,15 @@ void Update(App* app) {
             float yPos = sin(animationTime) * 7.5f;
             glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
             entity.worldMatrix = translation;
+        }
+        else if (entity.type == EntityType::Relief_Mapping && app->isRotating ) {
+            float rotationAngle = animationTime / 2;
+            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), rotationAngle, glm::vec3(0, 1, 0));
+
+            glm::vec3 pos = glm::vec3(entity.worldMatrix[3]);
+            glm::mat4 translation = glm::translate(glm::mat4(1.0f), pos);
+
+            entity.worldMatrix = translation * rotation;
         }
 
         ActiveEntities(app, &entity);
