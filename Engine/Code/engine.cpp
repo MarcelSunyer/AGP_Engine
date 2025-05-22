@@ -609,11 +609,11 @@ void Gui(App* app)
                 app->entities[6].active == false;
                 glm::vec3 entityPosition = glm::vec3(app->entities[i].worldMatrix[3]);
 
-                if (app->entities[i].modelIndex == app->pikachu || app->entities[i].name == " " || app->entities[i].name == "SkyBox") {
+                if (app->entities[i].name == " " || app->entities[i].name == "SkyBox") {
                     //No registra las entities
                 }
                 else {
-                    if (app->entities[i].type == EntityType::Deferred_Rendering && app->pgaType == 0)
+                    if (app->entities[i].type == EntityType::Deferred_Rendering && app->pgaType == 1)
                     {
                         std::string label = "Geometry: " + app->entities[i].name;
                         if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
@@ -683,7 +683,7 @@ void Gui(App* app)
         
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
-                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(0), 1.f, app->pgaType);
+                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(1), 1.f, app->pgaType);
                 UpdateLights(app);
             }
 
@@ -701,7 +701,7 @@ void Gui(App* app)
                         for (int z = -10; z < 10; ++z)
                         {
                             glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-                            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 10, app->pgaType);
+                            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 1, app->pgaType);
                         }
                     }
                     UpdateLights(app);
@@ -974,10 +974,13 @@ void Update(App* app) {
 
     for (auto& entity : app->entities) {
         if (entity.modelIndex == app->pikachu) {
-            // Animación flotante de Pikachu
-            float yPos = sin(animationTime) * 7.5f;
-            glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, yPos, -30.0f));
-            entity.worldMatrix = translation;
+            float rotationAngle = animationTime / 2;
+            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), rotationAngle, glm::vec3(0, 1, 0));
+
+            glm::vec3 pos = glm::vec3(entity.worldMatrix[3]);
+            glm::mat4 translation = glm::translate(glm::mat4(1.0f), pos);
+
+            entity.worldMatrix = translation * rotation;
         }
         else if (entity.type == EntityType::Relief_Mapping && app->isRotating ) {
             float rotationAngle = animationTime / 2;
