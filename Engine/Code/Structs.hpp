@@ -26,7 +26,17 @@ struct Camera {
 
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
+    
+    void updateCameraVectors() {
+        glm::vec3 newFront;
+        newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        newFront.y = sin(glm::radians(pitch));
+        newFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        front = glm::normalize(newFront);
 
+        right = glm::normalize(glm::cross(front, worldUp));
+        up = glm::normalize(glm::cross(right, front));
+    }
 };
 
 // Buffer structure
@@ -373,6 +383,8 @@ struct App
 
     //TODO: No se si  esto de arriba cumple la misma función ^^^
     bool useForwardRendering; 
+    bool isRotating = false;
+
 };
 
 #endif // !STRUCTS

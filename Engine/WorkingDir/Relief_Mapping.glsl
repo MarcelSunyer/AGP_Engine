@@ -18,71 +18,40 @@ out Data {
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
+    vec3 worldFragPos; 
 } VSOut;
 
 void main() {
     vec3 fragPos = vec3(uModel * vec4(position, 1.0));
     VSOut.texCoords = texCoords;
 
-    vec3 T = normalize(mat3(uModel) * tangent);
-    vec3 B = normalize(mat3(uModel) * bitangent);
-    vec3 N = normalize(mat3(uModel) * normal);
+    // Corregido: Usar matriz normal para transformaciones
+    mat3 normalMatrix = transpose(inverse(mat3(uModel)));
+    vec3 T = normalize(normalMatrix * tangent);
+    vec3 B = normalize(normalMatrix * bitangent);
+    vec3 N = normalize(normalMatrix * normal);
+    
     VSOut.TBN = mat3(T, B, N);
-    VSOut.TBN = transpose(VSOut.TBN);
+    VSOut.TBN = transpose(VSOut.TBN); // Matriz para convertir a espacio tangente
 
     VSOut.tangentFragPos = VSOut.TBN * fragPos;
     VSOut.tangentViewPos = VSOut.TBN * uViewPos;
+    VSOut.worldFragPos = fragPos;
 
     gl_Position = uProj * uView * vec4(fragPos, 1.0);
 }
 
 #elif defined(FRAGMENT)
 
-
-struct Light {
-    int type;
-    vec3 color;
-    vec3 direction;
-    vec3 position;
-};
-
-layout(binding = 0) uniform GlobalParams {
-    vec3 uCameraPosition;
-    int uLightCount;
-    Light uLight[128];
-};
-
-vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
-    vec3 lightDir = normalize(light.position - position);
-    float distance = length(light.position - position);
-    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
-
-    vec3 ambient = light.color * 0.1;
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * diff;
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 1.5), 5.0);
-    vec3 specular = light.color * spec * 0.5;
-
-    return (ambient + diffuse + specular) * attenuation;
-}
-
-vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
-    vec3 lightDir = normalize(-light.direction);
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * diff;
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = light.color * spec * 0.5;
-    return diffuse + specular;
-}
-
+uniform mat4 uView; 
+uniform mat4 uProj; 
 
 in Data {
     vec2 texCoords;
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
+    vec3 worldFragPos;
 } FSIn;
 
 uniform sampler2D uDiffuse;
@@ -106,7 +75,6 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
     float currentLayerDepth = 0.0;
     float currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
 
-    // Ray-marching loop
     for (int i = 0; i < int(numLayers); ++i) {
         if (currentLayerDepth >= currentDepthMapValue)
             break;
@@ -116,14 +84,24 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
         currentDepthMapValue = texture(uHeightMap, currentTexCoords).r;
     }
 
-    // Fix propuesto: Muestreo adicional para interpolación
     vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
     float beforeDepth = texture(uHeightMap, prevTexCoords).r - (currentLayerDepth - layerDepth);
     float afterDepth = currentDepthMapValue - currentLayerDepth;
 
-    // Interpolación lineal mejorada
     float weight = afterDepth / (afterDepth - beforeDepth);
     vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, weight);
+
+    float totalLayerDepth = (currentLayerDepth - layerDepth) + weight * layerDepth;
+    float t = totalLayerDepth * uHeightScale;
+    
+    vec3 displacementTS = viewDirTS * t; // Usar viewDirTS corregido
+    vec3 displacementWS = FSIn.TBN * displacementTS;
+
+    vec3 newFragPos = FSIn.worldFragPos + displacementWS;
+
+    vec4 viewPos = uView * vec4(newFragPos, 1.0);
+    vec4 clipPos = uProj * viewPos;
+    gl_FragDepth = (clipPos.z / clipPos.w) * 0.5 + 0.5; // Normalizar a [0, 1]
 
     return finalTexCoords;
 }
@@ -139,13 +117,13 @@ void main() {
 
     vec3 normalTS = texture(uNormalMap, displacedTexCoords).rgb * 1.0 - 2.0;
 
-    vec3 normalWS = normalize(FSIn.TBN * normalTS);
+    vec3 normalWS = normalize(FSIn.TBN * (normalTS * 2.0 - 1.0));
 
     vec3 albedo = texture(uDiffuse, displacedTexCoords).rgb;
 
     //Todo
-    vec3 lightDir = normalize(vec3(0.5, 1., 1.0));
-    float diff = max(dot(normalWS, lightDir), 0.1);
+    vec3 lightDir = normalize(vec3(2.5, 1.5, 1.0));
+    float diff = max(dot(normalWS, lightDir), 0.3);
 
     oColor = vec4(albedo * diff, 1.0);
 
