@@ -18,7 +18,7 @@ out Data {
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
-    vec3 worldFragPos; // Añadido
+    vec3 worldFragPos; 
 } VSOut;
 
 void main() {
@@ -34,59 +34,22 @@ void main() {
 
     VSOut.tangentFragPos = VSOut.TBN * fragPos;
     VSOut.tangentViewPos = VSOut.TBN * uViewPos;
-    VSOut.worldFragPos = fragPos; // Añadido
+    VSOut.worldFragPos = fragPos;
 
     gl_Position = uProj * uView * vec4(fragPos, 1.0);
 }
 
 #elif defined(FRAGMENT)
 
-uniform mat4 uView;    // ← Declaración faltante
+uniform mat4 uView; 
 uniform mat4 uProj; 
-struct Light {
-    int type;
-    vec3 color;
-    vec3 direction;
-    vec3 position;
-};
-
-layout(binding = 0) uniform GlobalParams {
-    vec3 uCameraPosition;
-    int uLightCount;
-    Light uLight[128];
-};
-
-vec3 CalcPointLight(Light light, vec3 normal, vec3 position, vec3 viewDir) {
-    vec3 lightDir = normalize(light.position - position);
-    float distance = length(light.position - position);
-    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
-
-    vec3 ambient = light.color * 0.1;
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * diff;
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 1.5), 5.0);
-    vec3 specular = light.color * spec * 0.5;
-
-    return (ambient + diffuse + specular) * attenuation;
-}
-
-vec3 CalcDirLight(Light light, vec3 normal, vec3 viewDir) {
-    vec3 lightDir = normalize(-light.direction);
-    float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * diff;
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = light.color * spec * 0.5;
-    return diffuse + specular;
-}
 
 in Data {
     vec2 texCoords;
     vec3 tangentFragPos;
     vec3 tangentViewPos;
     mat3 TBN;
-    vec3 worldFragPos; // Añadido
+    vec3 worldFragPos;
 } FSIn;
 
 uniform sampler2D uDiffuse;
@@ -126,17 +89,14 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
     float weight = afterDepth / (afterDepth - beforeDepth);
     vec2 finalTexCoords = mix(currentTexCoords, prevTexCoords, weight);
 
-    // Cálculo del desplazamiento 3D
-    // Calcular desplazamiento en espacio tangente y convertir a mundo
     float totalLayerDepth = (currentLayerDepth - layerDepth) + weight * layerDepth;
     float t = totalLayerDepth * uHeightScale;
-        vec3 displacementTS = viewDirTS * t; // Usar viewDirTS corregido
+    
+    vec3 displacementTS = viewDirTS * t; // Usar viewDirTS corregido
     vec3 displacementWS = FSIn.TBN * displacementTS;
 
-    // Nueva posición del fragmento (en mundo)
     vec3 newFragPos = FSIn.worldFragPos + displacementWS;
 
-    // Calcular profundidad corregida
     vec4 viewPos = uView * vec4(newFragPos, 1.0);
     vec4 clipPos = uProj * viewPos;
     gl_FragDepth = (clipPos.z / clipPos.w) * 0.5 + 0.5; // Normalizar a [0, 1]
