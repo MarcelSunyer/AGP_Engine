@@ -13,6 +13,7 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
+#include <iostream>
 
 void CreateEntity(App* app, const u32 aModelIndx, const glm::mat4& aVP, const glm::mat4& aPosition, std::string name, EntityType type)
 {
@@ -369,6 +370,79 @@ void TestParaMiquel(App* app)
     }
 }
 
+void SetUpCubeMap(App* app) {
+    // Configurar geometría del cubemap
+    glGenVertexArrays(1, &app->cubeMap.VAO);
+    glGenBuffers(1, &app->cubeMap.VBO);
+    glGenBuffers(1, &app->cubeMap.EBO);
+
+    glBindVertexArray(app->cubeMap.VAO);
+
+    // Configurar VBO
+    glBindBuffer(GL_ARRAY_BUFFER, app->cubeMap.VBO);
+    glBufferData(GL_ARRAY_BUFFER,
+        app->cubeMap.cubemapCubeVertices.size() * sizeof(float),
+        app->cubeMap.cubemapCubeVertices.data(),
+        GL_STATIC_DRAW);
+
+    // Configurar EBO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->cubeMap.EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        app->cubeMap.cubemapCubeIndices.size() * sizeof(unsigned int),
+        app->cubeMap.cubemapCubeIndices.data(),
+        GL_STATIC_DRAW);
+
+    // Atributos de vértices
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+    glBindVertexArray(0);
+
+    // Cargar texturas del cubemap
+    std::vector<std::string> faces = {
+        "CubeMap/px.png",  // Derecha
+        "CubeMap/nx.png",  // Izquierda
+        "CubeMap/py.png",  // Arriba
+        "CubeMap/ny.png",  // Abajo
+        "CubeMap/pz.png",  // Frente
+        "CubeMap/nz.png"   // Detrás
+    };
+
+    glGenTextures(1, &app->cubeMap.cubeMapTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+
+    // Cargar cada cara del cubemap
+    
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        int width, height, nrChannels;
+
+        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            stbi_set_flip_vertically_on_load(false);
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Failed Loading Image" << faces[i].c_str() << std::endl;
+            stbi_image_free(data);
+        }
+    }
+
+    // Configurar parámetros de textura
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+}
+
+
 void Init(App* app)
 {
     app->pgaType = 2;
@@ -384,6 +458,10 @@ void Init(App* app)
     app->reliefMappingIdx = LoadProgram(app, "Relief_Mapping.glsl", "RELIEF_MAPPING");
 
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
+
+    app->cubeMapIdx = LoadProgram(app, "CubeMap.glsl", "CUBEMAP");
+
+    SetUpCubeMap(app);
 
     u32 cube = LoadModel(app, "Cube/Cube.obj");
 
@@ -904,21 +982,21 @@ void ActiveEntities(App* app, Entity* entity)
 
 void DisableEntities(App* app, Entity* entity)
 {
-    if (app->pgaType == 1 && !entity->type == EntityType::Deferred_Rendering)
+    if (app->pgaType == 1 && entity->type != EntityType::Deferred_Rendering)
     {
         entity->active = false;
     }
 
-    if (app->pgaType == 2 && !entity->type == EntityType::Relief_Mapping)
+    if (app->pgaType == 2 && entity->type != EntityType::Relief_Mapping)
     {
         entity->active = false;
     }
-
-    if (app->pgaType == 3 && !entity->type == EntityType::Enviroment_Map)
+    if (app->pgaType == 3 && entity->type != EntityType::Enviroment_Map)
     {
         entity->active = false;
     }
 }
+
 void Update(App* app) {
 
     app->mode = app->useForwardRendering ? Mode_Forward_Geometry : Mode_Deferred_Geometry;
@@ -1066,7 +1144,39 @@ void UpdateLights(App* app) {
     UnmapBuffer(app->globalUBO);
 }
 
+void RenderCubeMap(App* app) {
+    // Configurar estado de renderizado
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
 
+    // Usar shader del cubemap
+    Program& cubeMapProgram = app->programs[app->cubeMapIdx];
+    glUseProgram(cubeMapProgram.handle);
+
+    // Configurar matrices (eliminar componente de traslación)
+    glm::mat4 view = glm::mat4(glm::mat3(app->worldCamera.viewMatrix));
+    glm::mat4 projection = app->worldCamera.projectionMatrix;
+
+    glUniformMatrix4fv(glGetUniformLocation(cubeMapProgram.handle, "uView"), 1, GL_FALSE, &view[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(cubeMapProgram.handle, "uProj"), 1, GL_FALSE, &projection[0][0]);
+
+    // Vincular textura
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+    glUniform1i(glGetUniformLocation(cubeMapProgram.handle, "skybox"), 0);
+
+    // Renderizar cubo
+    glBindVertexArray(app->cubeMap.VAO);
+    glDrawElements(GL_TRIANGLES,
+        app->cubeMap.cubemapCubeIndices.size(),
+        GL_UNSIGNED_INT,
+        0);
+
+    // Restaurar estado
+    glBindVertexArray(0);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
+}
 void Render(App* app)
 {
     switch (app->mode)
@@ -1199,6 +1309,11 @@ void Render(App* app)
                         glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->reliefIntensity );
                     }
 
+                    if (program == &app->programs[app->cubeMapIdx])
+                    {
+                        glUniform1i(glGetUniformLocation(program->handle, "skybox"), 0);
+                    }
+
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
 
@@ -1208,7 +1323,10 @@ void Render(App* app)
                 glBindVertexArray(0);
                 glUseProgram(0);
             }
-
+            if (app->pgaType == 3)
+            {
+                RenderCubeMap(app);
+            }
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
             RenderScreenFillQuad(app, app->primaryFBO);

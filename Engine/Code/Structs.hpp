@@ -300,6 +300,35 @@ struct FrameBuffer
     }
 };
 
+struct CubeMap
+{
+    std::vector<float> cubemapCubeVertices = {
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f
+    };
+
+    std::vector<unsigned int> cubemapCubeIndices = {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+        4, 5, 1, 1, 0, 4,
+        3, 2, 6, 6, 7, 3,
+        4, 0, 3, 3, 7, 4,
+        1, 5, 6, 6, 2, 1 
+    };
+
+    GLuint VAO = 0;
+    GLuint VBO = 0;
+    GLuint EBO = 0;
+
+    u32 cubeMapTexture;
+};
+
 struct App
 {
     // Loop
@@ -327,7 +356,10 @@ struct App
     u32 geometryProgramIdx;
     u32 forwardProgramIdx;
     u32 reliefMappingIdx;
+    u32 environmentMapIdx;
+    u32 cubeMapIdx;
 
+    u32 cubemapTexHandle;
     //Modelo 3D cargado
     u32 pikachu;
     u32 patrickTextureUniform;
@@ -385,6 +417,7 @@ struct App
     bool useForwardRendering; 
     bool isRotating = false;
 
+    CubeMap cubeMap;
 };
 
 #endif // !STRUCTS
