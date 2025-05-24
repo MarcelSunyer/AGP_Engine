@@ -410,8 +410,6 @@ void SetUpCubeMap(App* app) {
 
     glGenTextures(1, &app->cubeMap.cubeMapTexture);
     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
-
-    // Cargar cada cara del cubemap
     
     for (unsigned int i = 0; i < 6; i++)
     {
@@ -510,7 +508,7 @@ void Init(App* app)
     CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 1);
     CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 2);
     CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(0, 0, 1), 2, 2);
-    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 2, 3);
+    CreateLight(app, LightType::Light_Directional, vec3(1.0), vec3(1, 0, 0), 7, 3);
 
     Buffer& entityUBO = app->entityUBO;
     MapBuffer(entityUBO, GL_WRITE_ONLY);
@@ -1098,6 +1096,10 @@ void Update(App* app) {
         memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + 2 * sizeof(glm::mat4), &normalMatrix, sizeof(glm::mat4));
     }
 
+    if (app->input.keys[K_F] == BUTTON_PRESSED)
+    {
+        //app->worldCamera.viewMatrix = glm::lookAt(vec3(0, 0, 0), vec3(0, 01, 0), vec3(0, 1, 0));
+    }
     UnmapBuffer(app->entityUBO);
     UpdateLights(app);
 }
@@ -1329,7 +1331,11 @@ void Render(App* app)
             }
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
-            RenderScreenFillQuad(app, app->primaryFBO);
+            if (app->pgaType == 1 || 2)
+            {
+                RenderScreenFillQuad(app, app->primaryFBO);
+            }
+            
         }
         break;
 

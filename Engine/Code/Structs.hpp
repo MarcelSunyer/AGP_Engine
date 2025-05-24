@@ -302,6 +302,7 @@ struct FrameBuffer
 
 struct CubeMap
 {
+
     std::vector<float> cubemapCubeVertices = {
     -1.0f,  1.0f, -1.0f,
     -1.0f, -1.0f, -1.0f,

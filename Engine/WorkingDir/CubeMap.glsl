@@ -26,7 +26,7 @@ uniform samplerCube skybox;
 
 void main()
 {
-    oColor = texture(skybox, texCoords);
+    oColor = texture(skybox, texCoords) *0.5;
 }
 #endif
 #endif
