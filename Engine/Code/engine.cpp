@@ -887,13 +887,42 @@ void Gui(App* app)
 
     ImGui::Begin("Rendering Mode");
     {
-        const char* modes[] = { "Deferred", "Forward" };
-        int currentMode = static_cast<int>(app->useForwardRendering);
-        if (ImGui::Combo("Rendering Mode", &currentMode, modes, IM_ARRAYSIZE(modes))) {
-            app->useForwardRendering = (currentMode == 1);
+        bool* p_state = &app->useForwardRendering;
+
+        ImGui::Text("Deferred");
+        ImGui::SameLine();
+
+        // Toggle switch visual
+        ImVec2 toggle_size = ImVec2(40, 20);
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        // Background and knob colors
+        ImU32 bg_color = *p_state ? IM_COL32(100, 200, 100, 255) : IM_COL32(100, 100, 100, 255);
+        ImU32 knob_color = IM_COL32(255, 255, 255, 255);
+
+        // Toggle background
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + toggle_size.x, pos.y + toggle_size.y),
+            bg_color, toggle_size.y * 0.5f);
+
+        // Knob
+        float knob_radius = toggle_size.y * 0.4f;
+        float knob_x = *p_state ? (pos.x + toggle_size.x - knob_radius - 4)
+            : (pos.x + knob_radius + 4);
+        draw_list->AddCircleFilled(ImVec2(knob_x, pos.y + toggle_size.y / 2),
+            knob_radius, knob_color);
+
+        // Click interaction
+        ImGui::InvisibleButton("##RenderingToggle", toggle_size);
+        if (ImGui::IsItemClicked()) {
+            *p_state = !*p_state;
         }
+
+        ImGui::SameLine();
+        ImGui::Text("Forward");
     }
     ImGui::End();
+
 }
 
 void UpdateCameraVectors(Camera* camera) {
