@@ -54,6 +54,7 @@
   <ItemGroup>
     <None Include="WorkingDir\CubeMap.glsl" />
     <None Include="WorkingDir\FORWARD.glsl" />
+    <None Include="WorkingDir\Reflection_environment.glsl" />
     <None Include="WorkingDir\Relief_Mapping.glsl" />
     <None Include="WorkingDir\RENDER_GEOMETRY.glsl" />
     <None Include="WorkingDir\Render_Quad.glsl" />

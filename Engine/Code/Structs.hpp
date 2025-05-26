@@ -302,6 +302,23 @@ struct FrameBuffer
 
 struct CubeMap
 {
+    //std::vector<std::string> faces = {
+    //   "CubeMap/px.png",
+    //   "CubeMap/nx.png",
+    //   "CubeMap/py.png",
+    //   "CubeMap/ny.png",
+    //   "CubeMap/pz.png",
+    //   "CubeMap/nz.png"
+    //};
+
+    std::vector<std::string> faces = {
+       "CubeMap/px_.png",
+       "CubeMap/nx_.png",
+       "CubeMap/py_.png",
+       "CubeMap/ny_.png",
+       "CubeMap/pz_.png",
+       "CubeMap/nz_.png"
+    };
 
     std::vector<float> cubemapCubeVertices = {
     -1.0f,  1.0f, -1.0f,
@@ -414,11 +431,14 @@ struct App
 
     int pgaType;
 
-    //TODO: No se si  esto de arriba cumple la misma función ^^^
     bool useForwardRendering; 
     bool isRotating = false;
 
     CubeMap cubeMap;
+
+    bool gravitationalCamera = false;
+
+    float reflectionIntensity = 0.05f;
 };
 
 #endif // !STRUCTS

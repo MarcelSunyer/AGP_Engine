@@ -398,16 +398,6 @@ void SetUpCubeMap(App* app) {
 
     glBindVertexArray(0);
 
-    // Cargar texturas del cubemap
-    std::vector<std::string> faces = {
-        "CubeMap/px.png",  // Derecha
-        "CubeMap/nx.png",  // Izquierda
-        "CubeMap/py.png",  // Arriba
-        "CubeMap/ny.png",  // Abajo
-        "CubeMap/pz.png",  // Frente
-        "CubeMap/nz.png"   // Detrás
-    };
-
     glGenTextures(1, &app->cubeMap.cubeMapTexture);
     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
     
@@ -415,7 +405,7 @@ void SetUpCubeMap(App* app) {
     {
         int width, height, nrChannels;
 
-        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        unsigned char* data = stbi_load(app->cubeMap.faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
             stbi_set_flip_vertically_on_load(false);
@@ -427,7 +417,7 @@ void SetUpCubeMap(App* app) {
         }
         else
         {
-            std::cout << "Failed Loading Image" << faces[i].c_str() << std::endl;
+            std::cout << "Failed Loading Image" << app->cubeMap.faces[i].c_str() << std::endl;
             stbi_image_free(data);
         }
     }
@@ -458,6 +448,8 @@ void Init(App* app)
     app->programUniformTexture = glGetUniformLocation(app->programs[app->texturedGeometryProgramIdx].handle, "uTexture");
 
     app->cubeMapIdx = LoadProgram(app, "CubeMap.glsl", "CUBEMAP");
+    //Reflective Shader
+    app->environmentMapIdx = LoadProgram(app, "Reflection_environment.glsl", "REFLECTION_ENVIRONMENT");
 
     SetUpCubeMap(app);
 
@@ -526,6 +518,8 @@ void Init(App* app)
 
     CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere", EntityType::Deferred_Rendering);
 
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(0, 0, 0)), "Sphere", EntityType::Enviroment_Map);
+
     CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey", EntityType::Deferred_Rendering);
 
     CreateEntity(app, planeIdx, VP, glm::identity<glm::mat4>(), "Plane", EntityType::Deferred_Rendering);
@@ -541,6 +535,8 @@ void Init(App* app)
 
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
     UpdateLights(app);
+
+    app->reflectionIntensity = 3.0f;
 }
 
 // Helper function for the toggle button
@@ -734,6 +730,9 @@ void Gui(App* app)
 
                 ToggleButton("Speed Rotation", &app->isRotating);
             }
+            if (app->pgaType == 3) {
+                ImGui::SliderFloat("Reflection Intensity", &app->reflectionIntensity, 0.0f, 5.0f, "%.3f");
+            }
         }
         ImGui::Separator();
 
@@ -884,7 +883,17 @@ void Gui(App* app)
         ImGui::End();
 
     }
+    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
 
+        // Añade esto:
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("Gravitational Camera (F)");
+        ImGui::SameLine();
+        ToggleButton("##GravCamToggle", &app->gravitationalCamera);
+
+    }
+    ImGui::End();
     ImGui::Begin("Rendering Mode");
     {
         bool* p_state = &app->useForwardRendering;
@@ -1125,10 +1134,27 @@ void Update(App* app) {
         memcpy((char*)app->entityUBO.data + entity.entityBufferOffset + 2 * sizeof(glm::mat4), &normalMatrix, sizeof(glm::mat4));
     }
 
-    if (app->input.keys[K_F] == BUTTON_PRESSED)
-    {
-        //app->worldCamera.viewMatrix = glm::lookAt(vec3(0, 0, 0), vec3(0, 01, 0), vec3(0, 1, 0));
+    if (app->input.keys[K_F] == BUTTON_PRESSED) {
+        app->gravitationalCamera = !app->gravitationalCamera;
     }
+
+    // Mantener orientación si está activado
+    if (app->gravitationalCamera) {
+        glm::vec3 direction = glm::normalize(glm::vec3(0) - app->worldCamera.position);
+        app->worldCamera.yaw = glm::degrees(atan2(direction.z, direction.x));
+        app->worldCamera.pitch = glm::degrees(asin(direction.y));
+        UpdateCameraVectors(&app->worldCamera);
+
+        // Bloquear controles manuales
+        app->worldCamera.isRotating = false;
+        isPanning = false;
+    }
+
+    if (app->gravitationalCamera) {
+        app->worldCamera.isRotating = false;
+        isPanning = false;
+    }
+
     UnmapBuffer(app->entityUBO);
     UpdateLights(app);
 }
@@ -1290,20 +1316,29 @@ void Render(App* app)
                 // Determinar which shader se usa
                 Program* program = &app->programs[app->geometryProgramIdx];
                 if (app->programs[app->reliefMappingIdx].programName == "RELIEF_MAPPING" &&
-                    entity.name == "Cube" || entity.name == "Cube2" || entity.name == "Cube3")
+                    entity.type == EntityType::Relief_Mapping)
                 {
                     program = &app->programs[app->reliefMappingIdx];
                 }
+                
+                if (app->programs[app->environmentMapIdx].programName == "REFLECTION_ENVIRONMENT" &&
+                    entity.type == EntityType::Enviroment_Map)
+                {
+                    program = &app->programs[app->environmentMapIdx];
 
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+                    glUniform1i(glGetUniformLocation(program->handle, "skybox"), 3);
+
+                    glUniform1f(glGetUniformLocation(program->handle, "intesity"), app->reflectionIntensity);
+                }
                 glUseProgram(program->handle);
 
-                // Matrices and camera
                 glUniformMatrix4fv(glGetUniformLocation(program->handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
                 glUniformMatrix4fv(glGetUniformLocation(program->handle, "uView"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.viewMatrix));
                 glUniformMatrix4fv(glGetUniformLocation(program->handle, "uProj"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.projectionMatrix));
                 glUniform3fv(glGetUniformLocation(program->handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
 
-                // Bind UBOs
                 glBindBufferRange(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle, 0, app->globalUBO.size);
                 glBindBufferRange(GL_UNIFORM_BUFFER, 1, app->entityUBO.handle, entity.entityBufferOffset, entity.entityBufferSize);
 
@@ -1357,6 +1392,7 @@ void Render(App* app)
             if (app->pgaType == 3)
             {
                 RenderCubeMap(app);
+                
             }
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glUseProgram(0);
