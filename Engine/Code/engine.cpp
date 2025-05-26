@@ -307,10 +307,10 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
 }
 void SetUpCamera(App* app)
 {
-    app->worldCamera.position = glm::vec3(10, 90, 120);
+    app->worldCamera.position = glm::vec3(12.5, 200, 160);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.yaw = -90.0f;
-    app->worldCamera.pitch = -30.0f;
+    app->worldCamera.pitch = -50.0f;
     app->worldCamera.movementSpeed = 150.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
@@ -472,6 +472,8 @@ void Init(App* app)
     u32 sphere = LoadModel(app, "Sphere/Sphere.obj");
 
     u32 monkey = LoadModel(app, "Monkey/Monkey.obj");
+     
+    u32 car = LoadModel(app, "Car/Car.obj");
 
     //Comentat ja que no me crea mes d'una esfera jiji
     //app->sphereIdx = LoadModel(app, "Sphere/Sphere_Light.obj");
@@ -518,7 +520,9 @@ void Init(App* app)
 
     CreateEntity(app, sphere, VP, glm::translate(glm::vec3(30, 0, -30)), "Sphere", EntityType::Deferred_Rendering);
 
-    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(0, 0, 0)), "Sphere", EntityType::Enviroment_Map);
+    CreateEntity(app, sphere, VP, glm::translate(glm::vec3(-40, 0, 0)), "Sphere", EntityType::Enviroment_Map);
+    
+    CreateEntity(app, car, VP, glm::translate(glm::vec3(30, 0, 10)), "Car", EntityType::Enviroment_Map);
 
     CreateEntity(app, monkey, VP, glm::translate(glm::vec3(0, 0, 0)), "Monkey", EntityType::Deferred_Rendering);
 
@@ -696,6 +700,14 @@ void Gui(App* app)
                         }
                     }
                     else if (app->entities[i].type == EntityType::Relief_Mapping && app->pgaType == 2)
+                    {
+                        std::string label = "Geometry: " + app->entities[i].name;
+                        if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
+                            app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
+                            entityChanged = true;
+                        }
+                    }
+                    else if (app->entities[i].type == EntityType::Enviroment_Map && app->pgaType == 3)
                     {
                         std::string label = "Geometry: " + app->entities[i].name;
                         if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {

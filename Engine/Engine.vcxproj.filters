@@ -122,8 +122,10 @@
     <None Include="WorkingDir\FORWARD.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="WorkingDir\CubeMap.glsl" />
     <None Include="WorkingDir\Reflection_environment.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="WorkingDir\CubeMap.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>
