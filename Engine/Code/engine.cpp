@@ -769,8 +769,33 @@ void Gui(App* app)
                 app->reliefViewMode = App::Relief_VIEW_HEIGHT;
             }
         }
-
     }
+    if (app->pgaType == 3)
+    {
+        ImGui::Begin("CubeMap Render");
+        {
+            constexpr float buttonWidth = 80.0f;
+            constexpr float buttonHeight = 30.0f;
+            constexpr float spacing = 8.0f;
+
+            float totalWidth = 3 * buttonWidth + (3 - 1) * spacing;
+            float availWidth = ImGui::GetContentRegionAvail().x;
+            float offsetX = (availWidth - totalWidth) * 0.5f;
+            if (offsetX > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+            if (ImGui::Button("Reflection", ImVec2(80.0f, 30.0f)))
+            {
+                app->cubemapView = App::CubeMap_Reflection;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Normal", ImVec2(80.0f, 30.0f)))
+            {
+                app->cubemapView = App::CubeMap_Refraction;
+            }
+
+        }
+    }
+    
 
    
     ImGui::End();
@@ -1450,9 +1475,7 @@ void Render(App* app)
 
                     glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
-                    glUniform1i(glGetUniformLocation(program->handle, "skybox"), 3);
-
-                    glUniform1f(glGetUniformLocation(program->handle, "intesity"), app->reflectionIntensity);
+                   
                 }
                 glUseProgram(program->handle);
 
@@ -1499,12 +1522,13 @@ void Render(App* app)
 
 
                     }
-
-                    if (program == &app->programs[app->cubeMapIdx])
+                    if (program == &app->programs[app->environmentMapIdx])
                     {
-                        glUniform1i(glGetUniformLocation(program->handle, "skybox"), 0);
-                    }
+                        glUniform1i(glGetUniformLocation(program->handle, "skybox"), 3);
 
+                        glUniform1i(glGetUniformLocation(program->handle, "cubeMapType"), app->cubemapView);
+                    }
+                   
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
 

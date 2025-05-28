@@ -420,9 +420,17 @@ struct App
         Relief_VIEW_HEIGHT,
     };
 
+    enum CubeMapViewMode {
+        CubeMap_Reflection,
+        CubeMap_Refraction,
+        CubeMap_Dynamic,
+    };
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     
     ReliefViewMode reliefViewMode = Relief_VIEW_NORMALS;
+
+    CubeMapViewMode cubemapView = CubeMap_Reflection;
+
     bool showDepthOverlay = false;
     float reliefIntensity = 0.05f;
 

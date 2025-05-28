@@ -22,27 +22,46 @@ void main() {
 in vec3 vWorldPos;
 in vec3 vNormal;
 
+
 out vec4 FragColor;
 
 uniform samplerCube skybox;
 uniform vec3 uCameraPosition;
-uniform float intesity;
+uniform float refractiveIndex = 1.02;
+uniform int cubeMapType;
 
 void main() {
-    // Normalizar vectores
+    // Normalize vectors
     vec3 normal = normalize(vNormal);
     vec3 viewDir = normalize(uCameraPosition - vWorldPos);
-    
-    // Calcular Fresnel corregido
-    float fresnel = pow(1.0 - clamp(dot(viewDir, normal), 0.0, 1.0), 5.0); // Paréntesis y parámetros correctos
-    
-    // Calcular reflexión
-    vec3 reflectDir = reflect(-viewDir, normal);
-    vec3 reflection = texture(skybox, reflectDir).rgb;
-    
-    // Aplicar intensidad y Fresnel
-    FragColor = vec4(reflection * (fresnel * intesity + 0.2), 1.0); // Base reflectante + mínimo brillo
-}
 
+    float cosTheta = dot(viewDir, normal);
+    
+    // Fresnel effect (controls reflection/refraction blend)
+    float fresnelReflection = pow(1.0 - clamp(cosTheta, 0.0, 1.0), 5.0);
+
+    // Fresnel para refracción (mayor en ángulos frontales, inverso al de reflexión)
+    float fresnelRefraction = 1.0 - fresnelReflection;
+
+    // Reflexión (aplicar Fresnel)
+    vec3 reflectDir = reflect(-viewDir, normal);
+    vec3 reflection = (texture(skybox, reflectDir).rgb * fresnelRefraction) /2;
+
+    // Refracción (aplicar Fresnel inverso)
+    float ratio = refractiveIndex / 1.0;  // Aire -> Material
+    vec3 refractDir = refract(-viewDir, normal, ratio);
+    vec3 refraction = (texture(skybox, refractDir).rgb * fresnelRefraction) / 2;
+    
+    if (cubeMapType == 0)
+    {
+        FragColor = vec4(refraction /1.77, 1.0);
+    }
+
+    if (cubeMapType == 1)
+    {
+        FragColor = vec4(reflection/1.77, 1.0);
+    
+    }
+}
 #endif
 #endif
