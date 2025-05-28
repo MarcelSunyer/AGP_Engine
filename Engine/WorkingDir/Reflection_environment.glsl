@@ -29,20 +29,19 @@ uniform vec3 uCameraPosition;
 uniform float intesity;
 
 void main() {
+    // Normalizar vectores
     vec3 normal = normalize(vNormal);
-    vec3 viewDir = normalize(vWorldPos - uCameraPosition);
-
-    vec3 reflectDir = reflect(viewDir, normal);
+    vec3 viewDir = normalize(uCameraPosition - vWorldPos);
+    
+    // Calcular Fresnel corregido
+    float fresnel = pow(1.0 - clamp(dot(viewDir, normal), 0.0, 1.0), 5.0); // Paréntesis y parámetros correctos
+    
+    // Calcular reflexión
+    vec3 reflectDir = reflect(-viewDir, normal);
     vec3 reflection = texture(skybox, reflectDir).rgb;
-
-    vec3 diffuse = texture(skybox, normal).rgb;
-    float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 5.0);
-    fresnel = mix(0.1, 1.0, fresnel);
-     
-     vec3 specular = reflection * fresnel;
-    vec3 finalColor = reflection * 0.45 + specular * 0.02;
-
-    FragColor = vec4(finalColor, 1.0);
+    
+    // Aplicar intensidad y Fresnel
+    FragColor = vec4(reflection * (fresnel * intesity + 0.2), 1.0); // Base reflectante + mínimo brillo
 }
 
 #endif

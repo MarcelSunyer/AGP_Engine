@@ -302,24 +302,14 @@ struct FrameBuffer
 
 struct CubeMap
 {
-    //std::vector<std::string> faces = {
-    //   "CubeMap/px.png",
-    //   "CubeMap/nx.png",
-    //   "CubeMap/py.png",
-    //   "CubeMap/ny.png",
-    //   "CubeMap/pz.png",
-    //   "CubeMap/nz.png"
-    //};
+    std::vector<std::string> faces1;
 
-    std::vector<std::string> faces = {
-       "CubeMap/px_.png",
-       "CubeMap/nx_.png",
-       "CubeMap/py_.png",
-       "CubeMap/ny_.png",
-       "CubeMap/pz_.png",
-       "CubeMap/nz_.png"
-    };
+    std::vector<std::string> faces2;
+    std::vector<unsigned char*> faces1Data;
+    std::vector<unsigned char*> faces2Data;
 
+    std::vector<std::pair<int, int>> faces1Sizes;
+    std::vector<std::pair<int, int>> faces2Sizes;
     std::vector<float> cubemapCubeVertices = {
     -1.0f,  1.0f, -1.0f,
     -1.0f, -1.0f, -1.0f,

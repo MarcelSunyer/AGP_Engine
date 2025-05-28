@@ -371,6 +371,7 @@ void TestParaMiquel(App* app)
 }
 
 void SetUpCubeMap(App* app) {
+   
     // Configurar geometría del cubemap
     glGenVertexArrays(1, &app->cubeMap.VAO);
     glGenBuffers(1, &app->cubeMap.VBO);
@@ -405,7 +406,7 @@ void SetUpCubeMap(App* app) {
     {
         int width, height, nrChannels;
 
-        unsigned char* data = stbi_load(app->cubeMap.faces[i].c_str(), &width, &height, &nrChannels, 0);
+        unsigned char* data = stbi_load(app->cubeMap.faces1[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)
         {
             stbi_set_flip_vertically_on_load(false);
@@ -417,12 +418,11 @@ void SetUpCubeMap(App* app) {
         }
         else
         {
-            std::cout << "Failed Loading Image" << app->cubeMap.faces[i].c_str() << std::endl;
+            std::cout << "Failed Loading Image" << app->cubeMap.faces1[i].c_str() << std::endl;
             stbi_image_free(data);
         }
     }
 
-    // Configurar parámetros de textura
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -430,6 +430,72 @@ void SetUpCubeMap(App* app) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 }
 
+
+void InitCubeMaps(App* app)
+{
+    app->cubeMap.faces1 = {
+        "CubeMap/px.png", "CubeMap/nx.png",
+        "CubeMap/py.png", "CubeMap/ny.png",
+        "CubeMap/pz.png", "CubeMap/nz.png"
+    };
+
+    app->cubeMap.faces2 = {
+        "CubeMap/px_.png", "CubeMap/nx_.png",
+        "CubeMap/py_.png", "CubeMap/ny_.png",
+        "CubeMap/pz_.png", "CubeMap/nz_.png"
+    };
+
+    stbi_set_flip_vertically_on_load(false);
+
+    // Load faces1
+    for (int i = 0; i < 6; ++i) {
+        int w, h, nc;
+        unsigned char* data = stbi_load(app->cubeMap.faces1[i].c_str(), &w, &h, &nc, 0);
+        app->cubeMap.faces1Data.push_back(data);
+        app->cubeMap.faces1Sizes.emplace_back(w, h);
+    }
+
+    // Load faces2
+    for (int i = 0; i < 6; ++i) {
+        int w, h, nc;
+        unsigned char* data = stbi_load(app->cubeMap.faces2[i].c_str(), &w, &h, &nc, 0);
+        app->cubeMap.faces2Data.push_back(data);
+        app->cubeMap.faces2Sizes.emplace_back(w, h);
+    }
+}
+
+
+void UpdateCubeMap(App* app, int cubemapType) {
+    std::vector<unsigned char*>* dataVec;
+    std::vector<std::pair<int, int>>* sizeVec;
+
+    switch (cubemapType) {
+    case 1:
+        dataVec = &app->cubeMap.faces1Data;
+        sizeVec = &app->cubeMap.faces1Sizes;
+        break;
+    case 2:
+        dataVec = &app->cubeMap.faces2Data;
+        sizeVec = &app->cubeMap.faces2Sizes;
+        break;
+    default:
+        std::cerr << "Invalid cubemapType: " << cubemapType << std::endl;
+        return;
+    }
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+    for (unsigned int i = 0; i < 6; ++i) {
+        if ((*dataVec)[i]) {
+            int width = (*sizeVec)[i].first;
+            int height = (*sizeVec)[i].second;
+
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, (*dataVec)[i]
+            );
+        }
+    }
+}
 
 void Init(App* app)
 {
@@ -451,7 +517,11 @@ void Init(App* app)
     //Reflective Shader
     app->environmentMapIdx = LoadProgram(app, "Reflection_environment.glsl", "REFLECTION_ENVIRONMENT");
 
+    InitCubeMaps(app);
+
     SetUpCubeMap(app);
+
+
 
     u32 cube = LoadModel(app, "Cube/Cube.obj");
 
@@ -593,7 +663,7 @@ void Gui(App* app)
             {
                 app->pgaType = i + 1; // Asigna 1, 2 o 3
             }
-
+           
             if (isActive)
             {
                 ImGui::PopStyleColor();
@@ -743,6 +813,16 @@ void Gui(App* app)
                 ToggleButton("Speed Rotation", &app->isRotating);
             }
             if (app->pgaType == 3) {
+
+                if (ImGui::Button("CubeMap1"))
+                {
+                    UpdateCubeMap(app, 1);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("CubeMap2"))
+                {
+                    UpdateCubeMap(app, 2);
+                }
                 ImGui::SliderFloat("Reflection Intensity", &app->reflectionIntensity, 0.0f, 5.0f, "%.3f");
             }
         }
@@ -1451,6 +1531,17 @@ void CleanUp(App* app)
         app->embeddedElements = 0;
     }
 
+    for (auto data : app->cubeMap.faces1Data) {
+        if (data) stbi_image_free(data);
+    }
+    for (auto data : app->cubeMap.faces2Data) {
+        if (data) stbi_image_free(data);
+    }
+    if (app->cubeMap.VAO != 0)
+    {
+        glDeleteVertexArrays(1, &app->cubeMap.VAO);
+        app->cubeMap.VAO = 0;
+    }
     app->primaryFBO.Clear();
 }
 
