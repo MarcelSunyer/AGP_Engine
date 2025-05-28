@@ -58,6 +58,7 @@ uniform sampler2D uDiffuse;
 uniform sampler2D uNormalMap;
 uniform sampler2D uHeightMap;
 uniform float uHeightScale;
+uniform int uViewMode;
 
 layout(location = 0) out vec4 oColor;
 
@@ -125,13 +126,18 @@ void main() {
     vec3 lightDir = normalize(vec3(2.5, 1.5, 1.0));
     float diff = max(dot(normalWS, lightDir), 0.3);
 
-    oColor = vec4(albedo * diff, 1.0);
 
+    if (uViewMode == 0) {
+        oColor = vec4(albedo * diff, 1.0);
+    }
     // Debug normal
-    //oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
-
+     if (uViewMode == 1) {
+        oColor = vec4(normalWS * 0.5 + 0.5, 1.0);
+    }
     // Debug Heigh
-    //oColor = vec4(texture(uHeightMap, displacedTexCoords).rrr, 1.0);
+     if (uViewMode == 2) {
+        oColor = vec4(texture(uHeightMap, displacedTexCoords).rrr, 1.0);
+        }
 }
 
 #endif

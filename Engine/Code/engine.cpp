@@ -741,6 +741,36 @@ void Gui(App* app)
         ImGui::End();
 
     }
+    if (app->pgaType == 2)
+    {
+        ImGui::Begin("ViewMode");
+        {
+            constexpr float buttonWidth = 80.0f;
+            constexpr float buttonHeight = 30.0f;
+            constexpr float spacing = 8.0f;
+
+            float totalWidth = 3 * buttonWidth + (3 - 1) * spacing;
+            float availWidth = ImGui::GetContentRegionAvail().x;
+            float offsetX = (availWidth - totalWidth) * 0.5f;
+            if (offsetX > 0.0f)
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+            if (ImGui::Button("Main", ImVec2(80.0f, 30.0f)))
+            {
+                app->reliefViewMode = App::Relief_VIEW_MAIN;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Normal", ImVec2(80.0f, 30.0f)))
+            {
+                app->reliefViewMode = App::Relief_VIEW_NORMALS;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Height", ImVec2(80.0f, 30.0f)))
+            {
+                app->reliefViewMode = App::Relief_VIEW_HEIGHT;
+            }
+        }
+
+    }
 
    
     ImGui::End();
@@ -1465,6 +1495,9 @@ void Render(App* app)
 
                         glUniform3fv(glGetUniformLocation(program->handle, "uViewPos"), 1, glm::value_ptr(app->worldCamera.position));
                         glUniform1f(glGetUniformLocation(program->handle, "uHeightScale"), app->reliefIntensity );
+                        glUniform1i(glGetUniformLocation(program->handle, "uViewMode"), app->reliefViewMode);
+
+
                     }
 
                     if (program == &app->programs[app->cubeMapIdx])
