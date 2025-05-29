@@ -18,8 +18,7 @@ struct Camera {
     glm::vec3 up;
     glm::vec3 right;
     glm::vec3 worldUp;
-    float yaw;
-    float pitch;
+    glm::quat orientation;
     float movementSpeed;
     float mouseSensitivity;
     bool isRotating;
@@ -27,15 +26,10 @@ struct Camera {
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
     
-    void updateCameraVectors() {
-        glm::vec3 newFront;
-        newFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        newFront.y = sin(glm::radians(pitch));
-        newFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        front = glm::normalize(newFront);
-
-        right = glm::normalize(glm::cross(front, worldUp));
-        up = glm::normalize(glm::cross(right, front));
+    void updateCameraVectors(Camera* camera) {
+        camera->front = glm::normalize(camera->orientation * glm::vec3(0.0f, 0.0f, -1.0f));
+        camera->right = glm::normalize(glm::cross(camera->front, camera->worldUp));
+        camera->up = glm::normalize(glm::cross(camera->right, camera->front));
     }
 };
 
@@ -427,7 +421,7 @@ struct App
     };
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     
-    ReliefViewMode reliefViewMode = Relief_VIEW_NORMALS;
+    ReliefViewMode reliefViewMode = Relief_VIEW_MAIN;
 
     CubeMapViewMode cubemapView = CubeMap_Reflection;
 

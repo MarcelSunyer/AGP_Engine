@@ -305,15 +305,15 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     glActiveTexture(GL_TEXTURE0);
     UpdateLights(app);
 }
-void SetUpCamera(App* app)
-{
+void SetUpCamera(App* app) {
     app->worldCamera.position = glm::vec3(12.5, 200, 160);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    app->worldCamera.yaw = -90.0f;
-    app->worldCamera.pitch = -50.0f;
     app->worldCamera.movementSpeed = 150.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
+
+    // Inicializar el cuaternión con una rotación inicial (opcional)
+    app->worldCamera.orientation = glm::quat(glm::vec3(glm::radians(-50.0f), glm::radians(-90.0f), 0.0f));
     UpdateCameraVectors(&app->worldCamera);
 }
 
@@ -663,7 +663,7 @@ void Gui(App* app)
             {
                 app->pgaType = i + 1; // Asigna 1, 2 o 3
             }
-           
+
             if (isActive)
             {
                 ImGui::PopStyleColor();
@@ -678,7 +678,7 @@ void Gui(App* app)
         ImGui::PopStyleVar();
     }
     ImGui::End();
-    
+
     if (app->pgaType == 1)
     {
         ImGui::Begin("Viewport");
@@ -788,16 +788,22 @@ void Gui(App* app)
                 app->cubemapView = App::CubeMap_Reflection;
             }
             ImGui::SameLine();
-            if (ImGui::Button("Normal", ImVec2(80.0f, 30.0f)))
+            if (ImGui::Button("Refraction", ImVec2(80.0f, 30.0f)))
             {
                 app->cubemapView = App::CubeMap_Refraction;
             }
+            ImGui::SameLine();
+            if (ImGui::Button("CubeMap Dynamic", ImVec2(80.0f, 30.0f)))
+            {
+                app->cubemapView = App::CubeMap_Dynamic;
+            }  
+           
 
         }
     }
-    
 
-   
+
+
     ImGui::End();
 
     ImGui::Begin("Inspector");
@@ -821,7 +827,7 @@ void Gui(App* app)
                         if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
                             app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
                             entityChanged = true;
-                            
+
                         }
                     }
                     else if (app->entities[i].type == EntityType::Relief_Mapping && app->pgaType == 2)
@@ -860,8 +866,8 @@ void Gui(App* app)
 
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
-           
-            if (app->pgaType ==2)
+
+            if (app->pgaType == 2)
             {
                 ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
 
@@ -887,13 +893,23 @@ void Gui(App* app)
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
 
             ImGui::Separator();
-            ImGui::Text("Rotation (Degrees)");
+            ImGui::Text("Rotation (Quaternion)");
 
-            if (ImGui::DragFloat("Yaw", &app->worldCamera.yaw, 1.0f, -360.0f, 360.0f)) {
-                app->worldCamera.updateCameraVectors();
+            // Extraer ángulos de Euler del cuaternión para mostrarlos en la UI (solo para visualización/control)
+            glm::vec3 eulerAngles = glm::degrees(glm::eulerAngles(app->worldCamera.orientation));
+
+            // Mostrar los ángulos de Euler como controles deslizantes
+            float yaw = eulerAngles.y;
+            float pitch = eulerAngles.x;
+            if (ImGui::DragFloat("Yaw", &yaw, 1.0f, -360.0f, 360.0f)) {
+                // Reconstruir el cuaternión con los nuevos ángulos
+                app->worldCamera.orientation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0.0f));
+                UpdateCameraVectors(&app->worldCamera);
             }
-            if (ImGui::DragFloat("Pitch", &app->worldCamera.pitch, 1.0f, -89.0f, 89.0f)) {
-                app->worldCamera.updateCameraVectors();
+            if (ImGui::DragFloat("Pitch", &pitch, 1.0f, -89.0f, 89.0f)) {
+                // Reconstruir el cuaternión con los nuevos ángulos
+                app->worldCamera.orientation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0.0f));
+                UpdateCameraVectors(&app->worldCamera);
             }
 
             ImGui::Separator();
@@ -902,8 +918,9 @@ void Gui(App* app)
             ImGui::Checkbox("Is Rotating", &app->worldCamera.isRotating);
         }
 
+
         ImGui::Begin("Lights");
-        
+
         if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::Button("Add Directional Light")) {
                 CreateLight(app, LightType::Light_Directional, vec3(1), vec3(1), 1.f, app->pgaType);
@@ -1029,81 +1046,78 @@ void Gui(App* app)
         }
         ImGui::End();
 
-    }
-    if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
 
-        // Añade esto:
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Gravitational Camera (F)");
-        ImGui::SameLine();
-        ToggleButton("##GravCamToggle", &app->gravitationalCamera);
+        if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
 
-    }
-    ImGui::End();
-    ImGui::Begin("Rendering Mode");
-    {
-        bool* p_state = &app->useForwardRendering;
+            // Añade esto:
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Gravitational Camera (F)");
+            ImGui::SameLine();
+            ToggleButton("##GravCamToggle", &app->gravitationalCamera);
 
-        ImGui::Text("Deferred");
-        ImGui::SameLine();
-
-        // Toggle switch visual
-        ImVec2 toggle_size = ImVec2(40, 20);
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-        // Background and knob colors
-        ImU32 bg_color = *p_state ? IM_COL32(100, 200, 100, 255) : IM_COL32(100, 100, 100, 255);
-        ImU32 knob_color = IM_COL32(255, 255, 255, 255);
-
-        // Toggle background
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + toggle_size.x, pos.y + toggle_size.y),
-            bg_color, toggle_size.y * 0.5f);
-
-        // Knob
-        float knob_radius = toggle_size.y * 0.4f;
-        float knob_x = *p_state ? (pos.x + toggle_size.x - knob_radius - 4)
-            : (pos.x + knob_radius + 4);
-        draw_list->AddCircleFilled(ImVec2(knob_x, pos.y + toggle_size.y / 2),
-            knob_radius, knob_color);
-
-        // Click interaction
-        ImGui::InvisibleButton("##RenderingToggle", toggle_size);
-        if (ImGui::IsItemClicked()) {
-            *p_state = !*p_state;
         }
+        ImGui::End();
+        ImGui::Begin("Rendering Mode");
+        {
+            bool* p_state = &app->useForwardRendering;
 
-        ImGui::SameLine();
-        ImGui::Text("Forward");
+            ImGui::Text("Deferred");
+            ImGui::SameLine();
+
+            // Toggle switch visual
+            ImVec2 toggle_size = ImVec2(40, 20);
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+            // Background and knob colors
+            ImU32 bg_color = *p_state ? IM_COL32(100, 200, 100, 255) : IM_COL32(100, 100, 100, 255);
+            ImU32 knob_color = IM_COL32(255, 255, 255, 255);
+
+            // Toggle background
+            draw_list->AddRectFilled(pos, ImVec2(pos.x + toggle_size.x, pos.y + toggle_size.y),
+                bg_color, toggle_size.y * 0.5f);
+
+            // Knob
+            float knob_radius = toggle_size.y * 0.4f;
+            float knob_x = *p_state ? (pos.x + toggle_size.x - knob_radius - 4)
+                : (pos.x + knob_radius + 4);
+            draw_list->AddCircleFilled(ImVec2(knob_x, pos.y + toggle_size.y / 2),
+                knob_radius, knob_color);
+
+            // Click interaction
+            ImGui::InvisibleButton("##RenderingToggle", toggle_size);
+            if (ImGui::IsItemClicked()) {
+                *p_state = !*p_state;
+            }
+
+            ImGui::SameLine();
+            ImGui::Text("Forward");
+        }
+        ImGui::End();
+
     }
-    ImGui::End();
-
 }
 
 void UpdateCameraVectors(Camera* camera) {
-
-    glm::vec3 front;
-    front.x = cos(glm::radians(camera->yaw)) * cos(glm::radians(camera->pitch));
-    front.y = sin(glm::radians(camera->pitch));
-    front.z = sin(glm::radians(camera->yaw)) * cos(glm::radians(camera->pitch));
-    camera->front = glm::normalize(front);
-
+    // Calcular los vectores front, right y up a partir del cuaternión de orientación
+    camera->front = glm::normalize(camera->orientation * glm::vec3(0.0f, 0.0f, -1.0f));
     camera->right = glm::normalize(glm::cross(camera->front, camera->worldUp));
     camera->up = glm::normalize(glm::cross(camera->right, camera->front));
 }
 
 void ProcessMouseMovement(Camera* camera, float xoffset, float yoffset) {
-
     xoffset *= camera->mouseSensitivity;
     yoffset *= camera->mouseSensitivity;
 
-    camera->yaw += xoffset;
-    camera->pitch -= yoffset;
+    // Crear cuaterniones para rotación horizontal (yaw) y vertical (pitch)
+    glm::quat yawQuat = glm::angleAxis(glm::radians(-xoffset), camera->worldUp);
+    glm::quat pitchQuat = glm::angleAxis(glm::radians(-yoffset), camera->right);
 
-    if (camera->pitch > 89.0f) camera->pitch = 89.0f;
-    if (camera->pitch < -89.0f) camera->pitch = -89.0f;
+    // Combinar las rotaciones y normalizar
+    camera->orientation = glm::normalize(yawQuat * pitchQuat * camera->orientation);
 
+    // Actualizar los vectores de la cámara
     UpdateCameraVectors(camera);
 }
 
@@ -1288,8 +1302,13 @@ void Update(App* app) {
     // Mantener orientación si está activado
     if (app->gravitationalCamera) {
         glm::vec3 direction = glm::normalize(glm::vec3(0) - app->worldCamera.position);
-        app->worldCamera.yaw = glm::degrees(atan2(direction.z, direction.x));
-        app->worldCamera.pitch = glm::degrees(asin(direction.y));
+
+        // Calcular la orientación necesaria para mirar al origen usando cuaterniones
+        glm::quat targetOrientation = glm::quatLookAt(direction, app->worldCamera.worldUp);
+
+        // Interpolar suavemente hacia la nueva orientación (opcional)
+        app->worldCamera.orientation = glm::slerp(app->worldCamera.orientation, targetOrientation, 0.1f);
+
         UpdateCameraVectors(&app->worldCamera);
 
         // Bloquear controles manuales

@@ -54,14 +54,20 @@ void main() {
     
     if (cubeMapType == 0)
     {
-        FragColor = vec4(refraction /1.77, 1.0);
+        FragColor = vec4(reflection /1.77, 1.0);
     }
 
     if (cubeMapType == 1)
     {
-        FragColor = vec4(reflection/1.77, 1.0);
+        FragColor = vec4(refraction/1.77, 1.0);
     
     }
+    if (cubeMapType == 2)
+    {
+        FragColor = vec4((reflection * refraction) /10, 1.0);
+    
+    }
+
 }
 #endif
 #endif
