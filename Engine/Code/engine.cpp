@@ -1449,6 +1449,22 @@ void Render(App* app)
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalTexture"), 1);
                 }
 
+                if (entity.type == EntityType::Relief_Mapping) {
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
+
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
+
+                    GLuint normalMapLoc = glGetUniformLocation(forwardProgram.handle, "uNormalMap");
+                    GLuint heightMapLoc = glGetUniformLocation(forwardProgram.handle, "uHeightMap");
+                    GLuint heightScaleLoc = glGetUniformLocation(forwardProgram.handle, "uHeightScale");
+
+                    glUniform1i(normalMapLoc, 1);
+                    glUniform1i(heightMapLoc, 2);
+                    glUniform1f(heightScaleLoc, app->reliefIntensity);
+                }
+
                 // Dibujar
                 glBindVertexArray(FindVao(mesh, i, forwardProgram));
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
