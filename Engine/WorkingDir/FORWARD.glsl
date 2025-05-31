@@ -47,16 +47,27 @@ layout(binding = 0, std140) uniform GlobalParams {
     Light uLight[16];
 };
 
+// Material textures
 uniform sampler2D uAlbedoTexture;
-uniform sampler2D uNormalMap;   // NEW
-uniform sampler2D uHeightMap;   // NEW
-uniform float uHeightScale;     // NEW
+uniform sampler2D uNormalMap;
+uniform sampler2D uHeightMap;
+uniform float uHeightScale;
+
+// Environment mapping
+uniform samplerCube uSkybox;
+uniform float uRefractiveIndex;
+uniform int uEnvMapMode;
+uniform float uReflectionIntensity;
+
+// NEW: Feature enable flags
+uniform int uNormalMapAvailable;  // 0 = off, 1 = on
+uniform int uEnvironmentEnabled;  // 0 = off, 1 = on
 
 in vec3 vPosition;
 in vec3 vNormal;
 in vec2 vTexCoord;
-in vec3 vTangent;    // NEW
-in vec3 vBitangent;  // NEW
+in vec3 vTangent;   
+in vec3 vBitangent;  
 
 out vec4 oColor;
 
@@ -127,38 +138,76 @@ vec3 CalcPointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir)
 
 void main()
 {
-    // Reconstruct TBN matrix
+    // 1. Reconstruct TBN matrix
     vec3 T = normalize(vTangent);
     vec3 B = normalize(vBitangent);
     vec3 N = normalize(vNormal);
-    mat3 TBN = transpose(mat3(T, B, N));  // Transpose for world->tangent transform
+    mat3 TBN = mat3(T, B, N);
     
-    // Calculate view direction
+    // 2. Calculate view direction
     vec3 viewDirWS = normalize(uCameraPosition - vPosition);
-    vec3 viewDirTS = TBN * viewDirWS;  // Convert to tangent space
+    vec3 viewDirTS = transpose(TBN) * viewDirWS;
     
-    // Apply relief mapping
+    // 3. Apply relief mapping if enabled
     vec2 displacedTexCoords = vTexCoord;
     if (uHeightScale > 0.0) {
         displacedTexCoords = ParallaxOcclusionMapping(vTexCoord, viewDirTS);
     }
     
-    // Sample textures with new coordinates
+    // 4. Sample textures with new coordinates
     vec3 albedo = texture(uAlbedoTexture, displacedTexCoords).rgb;
-    vec3 normalTS = texture(uNormalMap, displacedTexCoords).rgb * 2.0 - 1.0;
-    vec3 normalWS = normalize(TBN * normalTS);  // Convert to world space
+    vec3 normalTS = vec3(0.0, 0.0, 1.0); // Default flat normal
     
-    // Lighting calculations
-    vec3 result = vec3(0.0);
-    for(int i = 0; i < uLightCount; ++i)
-    {
-        if(uLight[i].type == 0)
-            result += CalcDirLight(uLight[i], normalWS, viewDirWS) * albedo;
-        else
-            result += CalcPointLight(uLight[i], normalWS, vPosition, viewDirWS) * albedo;
+    // Only sample normal map if available
+    if (uNormalMapAvailable > 0) {
+        normalTS = texture(uNormalMap, displacedTexCoords).rgb * 2.0 - 1.0;
+    }
+    vec3 normalWS = normalize(TBN * normalTS);
+    
+    // 5. Lighting calculations
+    vec3 lighting = vec3(0.0);
+    for(int i = 0; i < uLightCount; ++i) {
+        if(uLight[i].type == 0) {
+            lighting += CalcDirLight(uLight[i], normalWS, viewDirWS) * albedo;
+        } else {
+            lighting += CalcPointLight(uLight[i], normalWS, vPosition, viewDirWS) * albedo;
+        }
     }
     
-    oColor = vec4(result, 1.0);
+    // 6. Environment mapping (only if enabled for this object)
+    vec3 finalColor = lighting;
+    if (uEnvironmentEnabled > 0) {
+        // Fresnel effect
+        float cosTheta = clamp(dot(normalWS, viewDirWS), 0.0, 1.0);
+        float fresnel = pow(1.0 - cosTheta, 5.0);
+        
+        // Reflection
+        vec3 reflectDir = reflect(-viewDirWS, normalWS);
+        vec3 reflection = texture(uSkybox, reflectDir).rgb;
+        
+        // Refraction
+        float ratio = uRefractiveIndex;
+        vec3 refractDir = refract(-viewDirWS, normalWS, ratio);
+        vec3 refraction = texture(uSkybox, refractDir).rgb;
+        
+        // Combine based on mode
+        vec3 envColor = vec3(0.0);
+        if (uEnvMapMode == 0) { // Reflection only
+            envColor = reflection * fresnel;
+        } 
+        else if (uEnvMapMode == 1) { // Refraction only
+            envColor = refraction * (1.0 - fresnel);
+        }
+        else if (uEnvMapMode == 2) { // Combined
+            envColor = mix(refraction, reflection, fresnel);
+        }
+        
+        // Blend with lighting
+        finalColor = mix(lighting, envColor, uReflectionIntensity);
+    }
+    
+    // 7. Output final color
+    oColor = vec4(finalColor, 1.0);
 }
 
 #endif

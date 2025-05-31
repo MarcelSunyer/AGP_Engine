@@ -1413,63 +1413,133 @@ void Render(App* app)
         Program& forwardProgram = app->programs[app->forwardProgramIdx];
         glUseProgram(forwardProgram.handle);
 
-        // Configurar UBOs globales
+        // Bind global UBO
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, app->globalUBO.handle);
 
-        // Matrices y propiedades comunes
+        // Set common matrices and properties
         glm::mat4 view = app->worldCamera.viewMatrix;
         glm::mat4 proj = app->worldCamera.projectionMatrix;
         glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uView"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uProj"), 1, GL_FALSE, glm::value_ptr(proj));
         glUniform3fv(glGetUniformLocation(forwardProgram.handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
 
-        // Renderizar cada entidad
+        // Reset all material flags to defaults at start
+        glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 0);
+        glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 0);
+        glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), 0.0f);
+        glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), 0.0f);
+
+        // Render each entity (except skybox)
         for (auto& entity : app->entities) {
-            if (!entity.active) continue;
+            if (!entity.active || entity.name == "SkyBox") continue;
 
             Model& model = app->models[entity.modelIndex];
             Mesh& mesh = app->meshes[model.meshIdx];
 
-            // Matriz modelo
+            // Model matrix
             glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
 
-            // Renderizar submeshes
+            // Render submeshes
             for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
                 Submesh& submesh = mesh.submeshes[i];
                 Material& mat = app->materials[model.materialIdx[i]];
 
-                // Vincular texturas
+                // Reset material-specific flags for each submesh
+                glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 0);
+                glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 0);
+                glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), 0.0f);
+
+                // Always bind albedo texture
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
                 glUniform1i(glGetUniformLocation(forwardProgram.handle, "uAlbedoTexture"), 0);
 
+                // Handle normal mapping for any entity that has a normal map
                 if (mat.normalsTextureIdx != 0) {
                     glActiveTexture(GL_TEXTURE1);
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalTexture"), 1);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMap"), 1);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 1);
                 }
 
-                if (entity.type == EntityType::Relief_Mapping) {
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
-
+                // Handle relief mapping
+                if (entity.type == EntityType::Relief_Mapping && mat.heighTextureIdx != 0) {
                     glActiveTexture(GL_TEXTURE2);
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
-
-                    GLuint normalMapLoc = glGetUniformLocation(forwardProgram.handle, "uNormalMap");
-                    GLuint heightMapLoc = glGetUniformLocation(forwardProgram.handle, "uHeightMap");
-                    GLuint heightScaleLoc = glGetUniformLocation(forwardProgram.handle, "uHeightScale");
-
-                    glUniform1i(normalMapLoc, 1);
-                    glUniform1i(heightMapLoc, 2);
-                    glUniform1f(heightScaleLoc, app->reliefIntensity);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uHeightMap"), 2);
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), app->reliefIntensity);
                 }
 
-                // Dibujar
+                // Handle environment mapping
+                if (entity.type == EntityType::Enviroment_Map) {
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 1);
+
+                    // Bind cubemap
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+
+                    // Set environment mapping uniforms
+                    GLuint skyboxLoc = glGetUniformLocation(forwardProgram.handle, "uSkybox");
+                    GLuint envMapModeLoc = glGetUniformLocation(forwardProgram.handle, "uEnvMapMode");
+                    GLuint refractiveIndexLoc = glGetUniformLocation(forwardProgram.handle, "uRefractiveIndex");
+                    GLuint reflectionIntensityLoc = glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity");
+
+                    if (skyboxLoc != -1) glUniform1i(skyboxLoc, 3);
+                    if (envMapModeLoc != -1) glUniform1i(envMapModeLoc, app->cubemapView);
+                    if (refractiveIndexLoc != -1) glUniform1f(refractiveIndexLoc, 1.02f);
+                    if (reflectionIntensityLoc != -1) glUniform1f(reflectionIntensityLoc, app->reflectionIntensity);
+                }
+
+                // Draw the submesh
                 glBindVertexArray(FindVao(mesh, i, forwardProgram));
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
             }
         }
+
+        // Now render the skybox last
+        Entity* skyboxEntity = nullptr;
+        for (auto& entity : app->entities) {
+            if (entity.name == "SkyBox") {
+                skyboxEntity = &entity;
+                break;
+            }
+        }
+
+        if (skyboxEntity && skyboxEntity->active) {
+            // Switch to skybox shader
+            Program& skyboxProgram = app->programs[app->cubeMapIdx];
+            glUseProgram(skyboxProgram.handle);
+
+            // Set matrices - remove translation from view matrix
+            glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(app->worldCamera.viewMatrix));
+            glUniformMatrix4fv(glGetUniformLocation(skyboxProgram.handle, "uView"), 1, GL_FALSE, glm::value_ptr(viewNoTranslation));
+            glUniformMatrix4fv(glGetUniformLocation(skyboxProgram.handle, "uProj"), 1, GL_FALSE, glm::value_ptr(app->worldCamera.projectionMatrix));
+
+            // Bind cubemap texture
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+            glUniform1i(glGetUniformLocation(skyboxProgram.handle, "skybox"), 0);
+
+            // Render skybox
+            Model& model = app->models[skyboxEntity->modelIndex];
+            Mesh& mesh = app->meshes[model.meshIdx];
+
+            // Disable depth writing for skybox
+            glDepthMask(GL_FALSE);
+
+            for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+                Submesh& submesh = mesh.submeshes[i];
+                glBindVertexArray(FindVao(mesh, i, skyboxProgram));
+                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
+            }
+
+            // Restore depth writing
+            glDepthMask(GL_TRUE);
+
+            // Switch back to forward program for any remaining objects
+            glUseProgram(forwardProgram.handle);
+        }
+
         break;
     }
         case Mode_Deferred_Geometry:
