@@ -55,9 +55,8 @@ uniform float uHeightScale;
 
 // Environment mapping
 uniform samplerCube uSkybox;
-uniform float uRefractiveIndex;
-uniform int uEnvMapMode;
 uniform float uReflectionIntensity;
+uniform float uFresnelPower = 5.0;
 
 // NEW: Feature enable flags
 uniform int uNormalMapAvailable;  // 0 = off, 1 = on
@@ -164,7 +163,7 @@ void main()
     }
     vec3 normalWS = normalize(TBN * normalTS);
     
-    // 5. Lighting calculations
+        // 5. Lighting calculations
     vec3 lighting = vec3(0.0);
     for(int i = 0; i < uLightCount; ++i) {
         if(uLight[i].type == 0) {
@@ -174,39 +173,20 @@ void main()
         }
     }
     
-    // 6. Environment mapping (only if enabled for this object)
+    // 6. Environment mapping (solo si está habilitado)
     vec3 finalColor = lighting;
     if (uEnvironmentEnabled > 0) {
-        // Fresnel effect
-        float cosTheta = clamp(dot(normalWS, viewDirWS), 0.0, 1.0);
-        float fresnel = pow(1.0 - cosTheta, 5.0);
-        
-        // Reflection
-        vec3 reflectDir = reflect(-viewDirWS, normalWS);
+        vec3 viewDir = normalize(uCameraPosition - vPosition);
+        vec3 reflectDir = reflect(-viewDir, normalWS);
         vec3 reflection = texture(uSkybox, reflectDir).rgb;
         
-        // Refraction
-        float ratio = uRefractiveIndex;
-        vec3 refractDir = refract(-viewDirWS, normalWS, ratio);
-        vec3 refraction = texture(uSkybox, refractDir).rgb;
+        float fresnel = pow(max(0.0, 1.0 - dot(normalWS, viewDir)), uFresnelPower);
         
-        // Combine based on mode
-        vec3 envColor = vec3(0.0);
-        if (uEnvMapMode == 0) { // Reflection only
-            envColor = reflection * fresnel;
-        } 
-        else if (uEnvMapMode == 1) { // Refraction only
-            envColor = refraction * (1.0 - fresnel);
-        }
-        else if (uEnvMapMode == 2) { // Combined
-            envColor = mix(refraction, reflection, fresnel);
-        }
-        
-        // Blend with lighting
-        finalColor = mix(lighting, envColor, uReflectionIntensity);
+        // CORRECCIÓN: Mezcla adecuada entre iluminación y reflexión
+        finalColor = lighting * (1.0 - fresnel * uReflectionIntensity) + 
+                    reflection * fresnel * uReflectionIntensity;
     }
     
-    // 7. Output final color
     oColor = vec4(finalColor, 1.0);
 }
 
