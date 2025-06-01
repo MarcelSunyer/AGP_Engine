@@ -1448,6 +1448,10 @@ void Render(App* app)
         glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uProj"), 1, GL_FALSE, glm::value_ptr(proj));
         glUniform3fv(glGetUniformLocation(forwardProgram.handle, "uCameraPosition"), 1, glm::value_ptr(app->worldCamera.position));
 
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
+        glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
+
         // Reset material flags to defaults
         glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 0);
         glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 0);
@@ -1474,8 +1478,8 @@ void Render(App* app)
                 Submesh& submesh = mesh.submeshes[i];
                 Material& mat = app->materials[model.materialIdx[i]];
 
-                // Reset texture units to avoid carryover
-                for (int texUnit = 0; texUnit <= 3; ++texUnit) {
+                // Reset ONLY texture units 0-2 (preserve unit 3 cubemap)
+                for (int texUnit = 0; texUnit <= 2; ++texUnit) {
                     glActiveTexture(GL_TEXTURE0 + texUnit);
                     glBindTexture(GL_TEXTURE_2D, 0);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -1512,6 +1516,7 @@ void Render(App* app)
                 // Handle environment mapping
                 if (entity.type == EntityType::Enviroment_Map) {
                     environmentEnabled = 1;
+                    reflectionIntensity = app->reflectionIntensity;
                     glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
