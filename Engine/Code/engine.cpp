@@ -1458,6 +1458,13 @@ void Render(App* app)
         glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), 0.0f);
         glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), 0.0f);
 
+        // Reset ALL texture units before each entity
+        for (int i = 0; i < 4; i++) {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        }
+
         // Render all entities (except skybox)
         for (auto& entity : app->entities) {
             if (!entity.active || entity.name == "SkyBox") continue;
@@ -1465,79 +1472,71 @@ void Render(App* app)
             Model& model = app->models[entity.modelIndex];
             Mesh& mesh = app->meshes[model.meshIdx];
 
-            // Model matrix
             glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uModel"), 1, GL_FALSE, glm::value_ptr(entity.worldMatrix));
-            glm::mat4 view = app->worldCamera.viewMatrix;
-            glm::mat4 proj = app->worldCamera.projectionMatrix;
-            glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-            glUniformMatrix4fv(glGetUniformLocation(forwardProgram.handle, "uProj"), 1, GL_FALSE, glm::value_ptr(proj));
 
-            // Render submeshes
             for (size_t i = 0; i < mesh.submeshes.size(); ++i) {
+                if (i >= model.materialIdx.size()) continue;
 
-                Submesh& submesh = mesh.submeshes[i];
-                Material& mat = app->materials[model.materialIdx[i]];
-
-                // Reset ONLY texture units 0-2 (preserve unit 3 cubemap)
-                for (int texUnit = 0; texUnit <= 2; ++texUnit) {
+                // Reset all texture units
+                for (int texUnit = 0; texUnit < 4; ++texUnit) {
                     glActiveTexture(GL_TEXTURE0 + texUnit);
                     glBindTexture(GL_TEXTURE_2D, 0);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
                 }
 
-                // Reset material flags
-                int environmentEnabled = 0;
-                int normalMapAvailable = 0;
-                float heightScale = 0.0f;
-                float reflectionIntensity = 0.0f;
-                float fresnelPower = 5.0f;
+                u32 matIdx = model.materialIdx[i];
+                Material& mat = app->materials[matIdx];
 
-                // Bind albedo texture (always present)
+                // Albedo
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, app->textures[mat.albedoTextureIdx].handle);
                 glUniform1i(glGetUniformLocation(forwardProgram.handle, "uAlbedoTexture"), 0);
 
-                // Handle normal mapping
+                // Normal map
                 if (mat.normalsTextureIdx != 0) {
                     glActiveTexture(GL_TEXTURE1);
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.normalsTextureIdx].handle);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMap"), 1);
-                    normalMapAvailable = 1;
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 1);
+                } else {
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMap"), 1);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), 0);
                 }
 
-                // Handle relief mapping
-                if (entity.type == EntityType::Relief_Mapping && mat.heighTextureIdx != 0) {
+                // Height map
+                if (mat.heighTextureIdx != 0) {
                     glActiveTexture(GL_TEXTURE2);
                     glBindTexture(GL_TEXTURE_2D, app->textures[mat.heighTextureIdx].handle);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uHeightMap"), 2);
-                    heightScale = app->reliefIntensity;
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), app->reliefIntensity);
+                } else {
+                    glActiveTexture(GL_TEXTURE2);
+                    glBindTexture(GL_TEXTURE_2D, 0);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uHeightMap"), 2);
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), 0.0f);
                 }
 
-                // Handle environment mapping
+                // --- Reflection/environment map: only for Enviroment_Map entities ---
                 if (entity.type == EntityType::Enviroment_Map) {
-                    environmentEnabled = 1;
-                    reflectionIntensity = app->reflectionIntensity;
                     glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 1);
                     glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), app->reflectionIntensity);
-                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uFresnelPower"), 5.0); 
+                } else {
+                    glActiveTexture(GL_TEXTURE3);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 0);
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), 0.0f);
                 }
-
-                // Set material flags
-                glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), environmentEnabled);
-                glUniform1i(glGetUniformLocation(forwardProgram.handle, "uNormalMapAvailable"), normalMapAvailable);
-                glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), heightScale);
-                glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), reflectionIntensity);
-                glUniform1f(glGetUniformLocation(forwardProgram.handle, "uFresnelPower"), fresnelPower);
 
                 // Draw submesh
                 glBindVertexArray(FindVao(mesh, i, forwardProgram));
-                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)submesh.indexOffset);
-
-                // Reset vertex array and active texture
+                glDrawElements(GL_TRIANGLES, mesh.submeshes[i].indices.size(), GL_UNSIGNED_INT, (void*)(uintptr_t)mesh.submeshes[i].indexOffset);
                 glBindVertexArray(0);
-                glActiveTexture(GL_TEXTURE0);
             }
         }
         break;
@@ -1737,7 +1736,7 @@ GLuint FindVao(Mesh& mesh, u32 submeshIndex, const Program& program)
                 const u32 ncomp = meshLayout.componentCount;
                 const u32 offset = meshLayout.offset + submesh.vertexOffset;
                 const u32 stride = submesh.vertexBufferLayout.stride;
-                glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
+                               glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
                 glEnableVertexAttribArray(index);
 
                 attributeWasLinked = true;

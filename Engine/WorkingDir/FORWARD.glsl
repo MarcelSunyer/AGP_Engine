@@ -147,17 +147,17 @@ void main()
     vec3 viewDirWS = normalize(uCameraPosition - vPosition);
     vec3 viewDirTS = transpose(TBN) * viewDirWS;
     
-    // 3. Apply relief mapping if enabled
+    // 3. Apply relief mapping ONLY if height map is available AND heightScale > 0
     vec2 displacedTexCoords = vTexCoord;
-    if (uHeightScale > 0.0) {
+    if (uNormalMapAvailable > 0 && uHeightScale > 0.0) {
         displacedTexCoords = ParallaxOcclusionMapping(vTexCoord, viewDirTS);
     }
     
     // 4. Sample textures with new coordinates
     vec3 albedo = texture(uAlbedoTexture, displacedTexCoords).rgb;
-    vec3 normalTS = vec3(0.0, 0.0, 1.0); // Default flat normal
     
     // Only sample normal map if available
+    vec3 normalTS = vec3(0.0, 0.0, 1.0); // Default flat normal
     if (uNormalMapAvailable > 0) {
         normalTS = texture(uNormalMap, displacedTexCoords).rgb * 2.0 - 1.0;
     }
@@ -173,18 +173,14 @@ void main()
         }
     }
     
-    // 6. Environment mapping (solo si está habilitado)
+    // 6. Environment mapping (solo si estï¿½ habilitado)
     vec3 finalColor = lighting;
     if (uEnvironmentEnabled > 0) {
         vec3 viewDir = normalize(uCameraPosition - vPosition);
         vec3 reflectDir = reflect(-viewDir, normalWS);
         vec3 reflection = texture(uSkybox, reflectDir).rgb;
-        
-        float fresnel = pow(max(0.0, 1.0 - dot(normalWS, viewDir)), uFresnelPower);
-        
-        // CORRECCIÓN: Mezcla adecuada entre iluminación y reflexión
-        finalColor = lighting * (1.0 - fresnel * uReflectionIntensity) + 
-                    reflection * fresnel * uReflectionIntensity;
+
+        finalColor = reflection;
     }
     
     oColor = vec4(finalColor, 1.0);
