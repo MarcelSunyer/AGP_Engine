@@ -48,7 +48,7 @@ void main() {
     vec3 reflection = (texture(skybox, reflectDir).rgb * fresnelRefraction) /2;
 
     // Refracción (aplicar Fresnel inverso)
-    float ratio = refractiveIndex / 1.0;  // Aire -> Material
+    float ratio = refractiveIndex / 1.0; 
     vec3 refractDir = refract(-viewDir, normal, ratio);
     vec3 refraction = (texture(skybox, refractDir).rgb * fresnelRefraction) / 2;
     

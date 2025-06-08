@@ -306,14 +306,17 @@ void RenderScreenFillQuad(App* app, const FrameBuffer& aFBO)
     UpdateLights(app);
 }
 void SetUpCamera(App* app) {
-    app->worldCamera.position = glm::vec3(12.5, 200, 160);
+    app->worldCamera.position = glm::vec3(12.5f, 200.0f, 160.0f);
     app->worldCamera.worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
     app->worldCamera.movementSpeed = 150.0f;
     app->worldCamera.mouseSensitivity = 0.1f;
     app->worldCamera.isRotating = false;
 
-    // Inicializar el cuaternión con una rotación inicial (opcional)
-    app->worldCamera.orientation = glm::quat(glm::vec3(glm::radians(-50.0f), glm::radians(-90.0f), 0.0f));
+    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 direction = glm::normalize(target - app->worldCamera.position);
+
+    app->worldCamera.orientation = glm::quatLookAt(direction, app->worldCamera.worldUp);
+
     UpdateCameraVectors(&app->worldCamera);
 }
 
@@ -447,6 +450,12 @@ void InitCubeMaps(App* app)
         "CubeMap/pz_.png", "CubeMap/nz_.png"
     };
 
+    app->cubeMap.faces3 = {
+        "CubeMap/_px.png", "CubeMap/_nx.png",
+        "CubeMap/_py.png", "CubeMap/_ny.png",
+        "CubeMap/_pz.png", "CubeMap/_nz.png"
+    };
+
     stbi_set_flip_vertically_on_load(false);
 
     // Load faces1
@@ -463,6 +472,12 @@ void InitCubeMaps(App* app)
         unsigned char* data = stbi_load(app->cubeMap.faces2[i].c_str(), &w, &h, &nc, 0);
         app->cubeMap.faces2Data.push_back(data);
         app->cubeMap.faces2Sizes.emplace_back(w, h);
+    }
+    for (int i = 0; i < 6; ++i) {
+        int w, h, nc;
+        unsigned char* data = stbi_load(app->cubeMap.faces3[i].c_str(), &w, &h, &nc, 0);
+        app->cubeMap.faces3Data.push_back(data);
+        app->cubeMap.faces3Sizes.emplace_back(w, h);
     }
 }
 
@@ -793,14 +808,7 @@ void Gui(App* app)
             if (ImGui::Button("Refraction", ImVec2(80.0f, 30.0f)))
             {
                 app->cubemapView = App::CubeMap_Refraction;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("CubeMap Dynamic", ImVec2(80.0f, 30.0f)))
-            {
-                app->cubemapView = App::CubeMap_Dynamic;
-            }  
-           
-
+            }         
         }
     }
 
@@ -876,17 +884,26 @@ void Gui(App* app)
                 ToggleButton("Speed Rotation", &app->isRotating);
             }
             if (app->pgaType == 3) {
+                if (ImGui::Begin("CubeMap"))
+                {
+                    if (ImGui::Button("Outdoor area"))
+                    {
+                        UpdateCubeMap(app, 1);
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("House"))
+                    {
+                        UpdateCubeMap(app, 2);
+                    }
+                    if (ImGui::Button("Studio"))
+                    {
+                        UpdateCubeMap(app, 3);
+                    }
+                
+                    ImGui::SliderFloat("Reflection Intensity", &app->reflectionIntensity, 0.0f, 5.0f, "%.3f");
+                } 
+                ImGui::End();
 
-                if (ImGui::Button("CubeMap1"))
-                {
-                    UpdateCubeMap(app, 1);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("CubeMap2"))
-                {
-                    UpdateCubeMap(app, 2);
-                }
-                ImGui::SliderFloat("Reflection Intensity", &app->reflectionIntensity, 0.0f, 5.0f, "%.3f");
             }
         }
         ImGui::Separator();

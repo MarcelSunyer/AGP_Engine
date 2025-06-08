@@ -297,13 +297,16 @@ struct FrameBuffer
 struct CubeMap
 {
     std::vector<std::string> faces1;
-
     std::vector<std::string> faces2;
+    std::vector<std::string> faces3;
+
     std::vector<unsigned char*> faces1Data;
     std::vector<unsigned char*> faces2Data;
+    std::vector<unsigned char*> faces3Data;
 
     std::vector<std::pair<int, int>> faces1Sizes;
     std::vector<std::pair<int, int>> faces2Sizes;
+    std::vector<std::pair<int, int>> faces3Sizes;
     std::vector<float> cubemapCubeVertices = {
     -1.0f,  1.0f, -1.0f,
     -1.0f, -1.0f, -1.0f,
@@ -417,7 +420,6 @@ struct App
     enum CubeMapViewMode {
         CubeMap_Reflection,
         CubeMap_Refraction,
-        CubeMap_Dynamic,
     };
     BufferViewMode bufferViewMode = BUFFER_VIEW_MAIN;
     
