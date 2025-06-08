@@ -495,6 +495,10 @@ void UpdateCubeMap(App* app, int cubemapType) {
         dataVec = &app->cubeMap.faces2Data;
         sizeVec = &app->cubeMap.faces2Sizes;
         break;
+    case 3:
+        dataVec = &app->cubeMap.faces3Data;
+        sizeVec = &app->cubeMap.faces3Sizes;
+        break;
     default:
         std::cerr << "Invalid cubemapType: " << cubemapType << std::endl;
         return;
