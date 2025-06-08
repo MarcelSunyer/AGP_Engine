@@ -758,9 +758,8 @@ void Gui(App* app)
             ImGui::PopStyleVar();
         }
         ImGui::End();
-
     }
-    if (app->pgaType == 2)
+    else if (app->pgaType == 2)
     {
         ImGui::Begin("ViewMode");
         {
@@ -788,8 +787,9 @@ void Gui(App* app)
                 app->reliefViewMode = App::Relief_VIEW_HEIGHT;
             }
         }
+        ImGui::End();
     }
-    if (app->pgaType == 3)
+    else if (app->pgaType == 3)
     {
         ImGui::Begin("CubeMap Render");
         {
@@ -810,13 +810,10 @@ void Gui(App* app)
             if (ImGui::Button("Refraction", ImVec2(80.0f, 30.0f)))
             {
                 app->cubemapView = App::CubeMap_Refraction;
-            }         
+            }
         }
+        ImGui::End();
     }
-
-
-
-    ImGui::End();
 
     ImGui::Begin("Inspector");
     {
@@ -839,7 +836,6 @@ void Gui(App* app)
                         if (ImGui::DragFloat3(label.c_str(), &entityPosition[0], 0.1f)) {
                             app->entities[i].worldMatrix = glm::translate(glm::mat4(1.0f), entityPosition);
                             entityChanged = true;
-
                         }
                     }
                     else if (app->entities[i].type == EntityType::Relief_Mapping && app->pgaType == 2)
@@ -858,7 +854,6 @@ void Gui(App* app)
                             entityChanged = true;
                         }
                     }
-
                 }
 
                 ImGui::PopID();
@@ -879,20 +874,17 @@ void Gui(App* app)
         {
             ImGui::Begin("Relief Intensity");
             {
-
-
                 ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
                 ToggleButton("Rotation", &app->isRotating);
             }
-
+            ImGui::End();
         }
-        ImGui::End();
+
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
 
-
             if (app->pgaType == 3) {
-                if (ImGui::Begin("CubeMap"))
+                ImGui::Begin("CubeMap");
                 {
                     if (ImGui::Button("Outdoor area"))
                     {
@@ -907,11 +899,10 @@ void Gui(App* app)
                     {
                         UpdateCubeMap(app, 3);
                     }
-                
-                    ImGui::SliderFloat("Diffuse Amb Intensity", &app->diffuse, 0.0f, 5.0f, "%.3f");
-                } 
-                ImGui::End();
 
+                    ImGui::SliderFloat("Diffuse Amb Intensity", &app->diffuse, 0.0f, 5.0f, "%.3f");
+                }
+                ImGui::End();
             }
         }
         ImGui::Separator();
@@ -945,134 +936,128 @@ void Gui(App* app)
             ImGui::Checkbox("Is Rotating", &app->worldCamera.isRotating);
         }
 
-
         ImGui::Begin("Lights");
-
-        if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (ImGui::Button("Add Directional Light")) {
-                CreateLight(app, LightType::Light_Directional, vec3(1), vec3(1), 1.f, app->pgaType);
-                UpdateLights(app);
-            }
-
-            if (ImGui::Button("Add Point Light")) {
-                CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f, app->pgaType);
-                UpdateLights(app);
-            }
-            if (app->pgaType == 1)
-            {
-
-                if (ImGui::Button("Add 400 Point Lights"))
-                {
-                    for (int x = -10; x < 10; ++x)
-                    {
-                        for (int z = -10; z < 10; ++z)
-                        {
-                            glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
-                            CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 1, app->pgaType);
-                        }
-                    }
+        {
+            if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::Button("Add Directional Light")) {
+                    CreateLight(app, LightType::Light_Directional, vec3(1), vec3(1), 1.f, app->pgaType);
                     UpdateLights(app);
                 }
 
-
-
-                if (ImGui::Button("Delete Last 400 lights"))
+                if (ImGui::Button("Add Point Light")) {
+                    CreateLight(app, LightType::Light_Point, vec3(1), vec3(0), 1.f, app->pgaType);
+                    UpdateLights(app);
+                }
+                if (app->pgaType == 1)
                 {
-                    if (!app->lights.empty()) {
-
-                        size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
-
-                        app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
-
+                    if (ImGui::Button("Add 400 Point Lights"))
+                    {
+                        for (int x = -10; x < 10; ++x)
+                        {
+                            for (int z = -10; z < 10; ++z)
+                            {
+                                glm::vec3 color = glm::vec3(rand() % 100 / 100.0f, rand() % 100 / 100.0f, rand() % 100 / 100.0f);
+                                CreateLight(app, LightType::Light_Point, color, glm::vec3(x * 50, 0.0f, z * 50), 1, app->pgaType);
+                            }
+                        }
                         UpdateLights(app);
                     }
-                }
-            }
 
-            for (size_t i = 0; i < app->lights.size(); ++i)
-            {
-                ImGui::PushID(static_cast<int>(i));
-                Light& light = app->lights[i];
-                if (light.mode != app->pgaType)
-                {
-                    continue;
-                }
-                bool lightChanged = false;
-
-                ImGui::Separator();
-
-                ImGui::Text("Light %d", i + 1);
-                float intensity = light.intensity;
-
-                const char* lightTypes[] = { "Directional", "Point" };
-
-                int currentType = static_cast<int>(light.type);
-                if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
-                {
-                    light.type = static_cast<LightType>(currentType);
-                    lightChanged = true;
-                }
-
-                float color[3] = { light.color[0], light.color[1], light.color[2] };
-                if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
-                {
-                    light.color = vec3(color[0], color[1], color[2]);
-                    lightChanged = true;
-                }
-
-                if (light.type == LightType::Light_Directional)
-                {
-                    float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
-                    if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
+                    if (ImGui::Button("Delete Last 400 lights"))
                     {
-                        light.direction = glm::normalize(vec3(direction[0], direction[1], direction[2]));
-                        lightChanged = true;
+                        if (!app->lights.empty()) {
+                            size_t lightsToRemove = glm::min(app->lights.size(), (size_t)401);
+                            app->lights.erase(app->lights.end() - lightsToRemove, app->lights.end());
+                            UpdateLights(app);
+                        }
                     }
                 }
-                else
-                {
-                    float position[3] = { light.position.x, light.position.y, light.position.z };
-                    if (ImGui::DragFloat3("Position", position, 0.1f))
-                    {
-                        light.position = vec3(position[0], position[1], position[2]);
 
+                for (size_t i = 0; i < app->lights.size(); ++i)
+                {
+                    ImGui::PushID(static_cast<int>(i));
+                    Light& light = app->lights[i];
+                    if (light.mode != app->pgaType)
+                    {
+                        continue;
+                    }
+                    bool lightChanged = false;
+
+                    ImGui::Separator();
+
+                    ImGui::Text("Light %d", i + 1);
+                    float intensity = light.intensity;
+
+                    const char* lightTypes[] = { "Directional", "Point" };
+
+                    int currentType = static_cast<int>(light.type);
+                    if (ImGui::Combo("Type", &currentType, lightTypes, IM_ARRAYSIZE(lightTypes)))
+                    {
+                        light.type = static_cast<LightType>(currentType);
                         lightChanged = true;
                     }
-                }
-                if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 100.0f, "%.001f"))
-                {
-                    light.intensity = intensity;
-                    lightChanged = true;
-                }
 
-                if (ImGui::Button("Delete"))
-                {
-                    app->lights.erase(app->lights.begin() + i);
-                    UpdateLights(app);
+                    float color[3] = { light.color[0], light.color[1], light.color[2] };
+                    if (ImGui::ColorEdit3("Color", color, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR))
+                    {
+                        light.color = vec3(color[0], color[1], color[2]);
+                        lightChanged = true;
+                    }
+
+                    if (light.type == LightType::Light_Directional)
+                    {
+                        float direction[3] = { light.direction.x, light.direction.y, light.direction.z };
+                        if (ImGui::DragFloat3("Direction", direction, 0.01f, -1.0f, 1.0f))
+                        {
+                            light.direction = glm::normalize(vec3(direction[0], direction[1], direction[2]));
+                            lightChanged = true;
+                        }
+                    }
+                    else
+                    {
+                        float position[3] = { light.position.x, light.position.y, light.position.z };
+                        if (ImGui::DragFloat3("Position", position, 0.1f))
+                        {
+                            light.position = vec3(position[0], position[1], position[2]);
+                            lightChanged = true;
+                        }
+                    }
+                    if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 100.0f, "%.001f"))
+                    {
+                        light.intensity = intensity;
+                        lightChanged = true;
+                    }
+
+                    if (ImGui::Button("Delete"))
+                    {
+                        app->lights.erase(app->lights.begin() + i);
+                        UpdateLights(app);
+                        ImGui::PopID();
+                        continue;
+                    }
+
+                    if (lightChanged)
+                    {
+                        UpdateLights(app);
+                    }
+
                     ImGui::PopID();
-                    continue;
                 }
-
-
-                if (lightChanged)
-                {
-                    UpdateLights(app);
-                }
-
-                ImGui::PopID();
             }
-            ImGui::End();
-        }
-        ImGui::Separator();
-
-        ImGui::Begin("OpenGl Info");
-        ImGui::Text("Extensions");
-        for (const auto& ext : app->glExtensions)
-        {
-            ImGui::Text("%s", ext.c_str());
         }
         ImGui::End();
 
+        ImGui::Separator();
+
+        ImGui::Begin("OpenGl Info");
+        {
+            ImGui::Text("Extensions");
+            for (const auto& ext : app->glExtensions)
+            {
+                ImGui::Text("%s", ext.c_str());
+            }
+        }
+        ImGui::End();
 
         if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat3("Position", &app->worldCamera.position[0], 0.1f);
@@ -1082,9 +1067,8 @@ void Gui(App* app)
             ImGui::Text("Gravitational Camera (F)");
             ImGui::SameLine();
             ToggleButton("##GravCamToggle", &app->gravitationalCamera);
-
         }
-        ImGui::End();
+
         ImGui::Begin("Rendering Mode");
         {
             bool* p_state = &app->useForwardRendering;
@@ -1122,8 +1106,8 @@ void Gui(App* app)
             ImGui::Text("Forward");
         }
         ImGui::End();
-
     }
+    ImGui::End();
 }
 
 void UpdateCameraVectors(Camera* camera) {
