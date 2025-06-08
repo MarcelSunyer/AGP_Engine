@@ -886,6 +886,8 @@ void Gui(App* app)
             if (app->pgaType == 3) {
                 ImGui::Begin("CubeMap");
                 {
+                    ImGui::Text("CubeMap Type");
+                    ImGui::Separator();
                     if (ImGui::Button("Outdoor area"))
                     {
                         UpdateCubeMap(app, 1);
@@ -895,6 +897,7 @@ void Gui(App* app)
                     {
                         UpdateCubeMap(app, 2);
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Studio"))
                     {
                         UpdateCubeMap(app, 3);
