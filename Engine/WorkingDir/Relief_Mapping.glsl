@@ -102,7 +102,7 @@ vec2 ParallaxOcclusionMapping(vec2 texCoords, vec3 viewDirTS) {
 
     vec4 viewPos = uView * vec4(newFragPos, 1.0);
     vec4 clipPos = uProj * viewPos;
-    gl_FragDepth = (clipPos.z / clipPos.w) * 0.5 + 0.5; // Normalizar a [0, 1]
+    gl_FragDepth = (clipPos.z / clipPos.w) * 0.5 + 0.5; 
 
     return finalTexCoords;
 }

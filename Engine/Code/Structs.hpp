@@ -439,7 +439,8 @@ struct App
 
     bool gravitationalCamera = false;
 
-    float reflectionIntensity = 0.05f;
+
+    float diffuse = 2.5f;
 };
 
 #endif // !STRUCTS

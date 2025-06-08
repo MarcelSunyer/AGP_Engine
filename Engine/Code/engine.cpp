@@ -630,8 +630,6 @@ void Init(App* app)
 
     app->primaryFBO.CreateFBO(4, app->displaySize.x, app->displaySize.y);
     UpdateLights(app);
-
-    app->reflectionIntensity = 3.0f;
 }
 
 // Helper function for the toggle button
@@ -877,16 +875,22 @@ void Gui(App* app)
             }
         }
 
+        if (app->pgaType == 2)
+        {
+            ImGui::Begin("Relief Intensity");
+            {
 
+
+                ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
+                ToggleButton("Rotation", &app->isRotating);
+            }
+
+        }
+        ImGui::End();
         if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FPS: %.1f", 1.0f / app->deltaTime);
 
-            if (app->pgaType == 2)
-            {
-                ImGui::SliderFloat("Relief Intensity", &app->reliefIntensity, 0.0f, 0.2f, "%.3f");
 
-                ToggleButton("Speed Rotation", &app->isRotating);
-            }
             if (app->pgaType == 3) {
                 if (ImGui::Begin("CubeMap"))
                 {
@@ -904,7 +908,7 @@ void Gui(App* app)
                         UpdateCubeMap(app, 3);
                     }
                 
-                    ImGui::SliderFloat("Reflection Intensity", &app->reflectionIntensity, 0.0f, 5.0f, "%.3f");
+                    ImGui::SliderFloat("Diffuse Amb Intensity", &app->diffuse, 0.0f, 5.0f, "%.3f");
                 } 
                 ImGui::End();
 
@@ -1539,19 +1543,20 @@ void Render(App* app)
                     glUniform1f(glGetUniformLocation(forwardProgram.handle, "uHeightScale"), 0.0f);
                 }
 
-                // --- Reflection/environment map: only for Enviroment_Map entities ---
+                // --- Reflection/environment map: only for Enviroment_Map entities --
                 if (entity.type == EntityType::Enviroment_Map) {
                     glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, app->cubeMap.cubeMapTexture);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
-                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 1);
-                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), app->reflectionIntensity);
+                    glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 1);;
+ 
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "diffus_amb"), app->diffuse);
                 } else {
                     glActiveTexture(GL_TEXTURE3);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uSkybox"), 3);
                     glUniform1i(glGetUniformLocation(forwardProgram.handle, "uEnvironmentEnabled"), 0);
-                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "uReflectionIntensity"), 0.0f);
+                    glUniform1f(glGetUniformLocation(forwardProgram.handle, "diffus_amb"), app->diffuse);
                 }
 
                 // Draw submesh
@@ -1652,6 +1657,9 @@ void Render(App* app)
                         glUniform1i(glGetUniformLocation(program->handle, "skybox"), 3);
 
                         glUniform1i(glGetUniformLocation(program->handle, "cubeMapType"), app->cubemapView);
+                        glUniform1i(glGetUniformLocation(program->handle, "uDebugType"), 1);
+                       
+                        glUniform1f(glGetUniformLocation(program->handle, "diffus_amb"), app->diffuse);
                     }
                    
                     Submesh& submesh = mesh.submeshes[i];
